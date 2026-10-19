@@ -3,6 +3,9 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\PasswordResetController;
+use App\Http\Controllers\Api\OrderCancellationController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
@@ -19,6 +22,8 @@ use App\Http\Controllers\Api\AdminController;
 // Xác thực
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:10,1');
 
 // Danh mục & Sản phẩm công khai cho khách hàng
 Route::get('/categories', [CategoryController::class, 'index']);
@@ -27,7 +32,7 @@ Route::get('/products/{id}', [ProductController::class, 'show']);
 Route::get('/products/{id}/reviews', [ReviewController::class, 'index']);
 
 // Tra cứu bảo hành điện tử
-Route::post('/warranties/check', [WarrantyController::class, 'check']);
+Route::post('/warranties/check', [WarrantyController::class, 'check'])->middleware('throttle:10,1');
 
 /*
 |--------------------------------------------------------------------------
@@ -37,8 +42,17 @@ Route::post('/warranties/check', [WarrantyController::class, 'check']);
 Route::middleware('auth:sanctum')->group(function () {
     // Thông tin tài khoản
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->middleware('throttle:6,1');
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/warranties/my', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'mine']);
+    Route::post('/warranties/{id}/service-requests', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'requestService'])->middleware('throttle:10,1');
 
+    Route::get('/wishlist', [\App\Http\Controllers\Api\WishlistController::class, 'index']);
+    Route::put('/wishlist/{productId}', [\App\Http\Controllers\Api\WishlistController::class, 'store'])->whereNumber('productId');
+    Route::delete('/wishlist/{productId}', [\App\Http\Controllers\Api\WishlistController::class, 'destroy'])->whereNumber('productId');
+
+    Route::post('/cart/merge', [\App\Http\Controllers\Api\CartMergeController::class, 'merge']);
     // Giỏ hàng
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add', [CartController::class, 'addToCart']);
@@ -48,7 +62,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Đơn hàng & Checkout
     Route::post('/checkout', [OrderController::class, 'checkout']);
     Route::get('/orders/my-orders', [OrderController::class, 'myOrders']);
+    Route::post('/orders/{id}/cancel', [OrderCancellationController::class, 'cancel'])->middleware('throttle:10,1');
+    Route::get('/orders/{id}/return-request', [\App\Http\Controllers\Api\ReturnRequestController::class, 'forOrder']);
+    Route::post('/orders/{id}/return-request', [\App\Http\Controllers\Api\ReturnRequestController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/orders/{id}', [OrderController::class, 'show']);
+
+    Route::get('/reviews/my', [ReviewController::class, 'mine']);
+    Route::put('/reviews/{id}', [ReviewController::class, 'update'])->whereNumber('id');
+    Route::delete('/reviews/{id}', [ReviewController::class, 'destroy'])->whereNumber('id');
 
     // Gửi đánh giá sản phẩm
     Route::post('/products/{id}/reviews', [ReviewController::class, 'store']);
@@ -58,7 +79,27 @@ Route::middleware('auth:sanctum')->group(function () {
     | 3. ADMIN PANEL ROUTES (prefix: /api/admin)
     |--------------------------------------------------------------------------
     */
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function () {
+        Route::get('/warranties', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'index']);
+        Route::get('/warranties/orders', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'orders']);
+        Route::get('/warranties/{id}', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'detail']);
+        Route::post('/warranties', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'store']);
+        Route::put('/warranties/{id}/status', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'status']);
+        Route::get('/warranty-services', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'services']);
+        Route::get('/warranty-services/{id}', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'serviceDetail']);
+        Route::put('/warranty-services/{id}', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'updateService']);
+        Route::get('/return-requests', [\App\Http\Controllers\Api\ReturnRequestController::class, 'index']);
+        Route::get('/return-requests/{id}', [\App\Http\Controllers\Api\ReturnRequestController::class, 'show']);
+        Route::put('/return-requests/{id}', [\App\Http\Controllers\Api\ReturnRequestController::class, 'update']);
+        Route::post('/orders/{id}/confirm-cod', [\App\Http\Controllers\Api\ReturnRequestController::class, 'confirmCod']);
+        Route::get('/suppliers', [\App\Http\Controllers\Api\InventoryController::class, 'suppliers']);
+        Route::post('/suppliers', [\App\Http\Controllers\Api\InventoryController::class, 'saveSupplier']);
+        Route::put('/suppliers/{id}', [\App\Http\Controllers\Api\InventoryController::class, 'saveSupplier']);
+        Route::get('/inventory/summary', [\App\Http\Controllers\Api\InventoryController::class, 'summary']);
+        Route::get('/inventory/products', [\App\Http\Controllers\Api\InventoryController::class, 'products']);
+        Route::get('/import-receipts', [\App\Http\Controllers\Api\InventoryController::class, 'receipts']);
+        Route::get('/import-receipts/{id}', [\App\Http\Controllers\Api\InventoryController::class, 'showReceipt']);
+        Route::post('/import-receipts', [\App\Http\Controllers\Api\InventoryController::class, 'storeReceipt']);
         // Thống kê tổng quan & Báo cáo tài chính nâng cao
         Route::get('/dashboard', [AdminController::class, 'dashboardStats']);
         Route::get('/analytics/financial', [AdminController::class, 'financialReport']);

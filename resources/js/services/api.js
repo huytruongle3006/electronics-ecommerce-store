@@ -17,7 +17,11 @@ api.interceptors.request.use((config) => {
 // APIs Xác thực
 export const loginApi = (data) => api.post('/login', data);
 export const registerApi = (data) => api.post('/register', data);
+export const forgotPasswordApi = (data) => api.post('/forgot-password', data);
+export const resetPasswordApi = (data) => api.post('/reset-password', data);
 export const getProfileApi = () => api.get('/profile');
+export const updateProfileApi = (data) => api.put('/profile', data);
+export const changePasswordApi = (data) => api.put('/profile/password', data);
 export const logoutApi = () => api.post('/logout');
 // APIs Sản phẩm & Bảo hành
 export const getProducts = () => api.get('/products');
@@ -31,11 +35,12 @@ export const updateCartItemApi = (item_id, quantity) => api.put(`/cart/items/${i
 export const removeCartItemApi = (item_id) => api.delete(`/cart/items/${item_id}`);
 // Order / Checkout APIx
 export const getMyOrdersApi = () => api.get('/orders/my-orders');
+export const cancelOrderApi = (id, reason) => api.post(`/orders/${id}/cancel`, { reason });
 export const getOrderDetailApi = (id) => api.get(`/orders/${id}`);
 export const checkoutApi = (data) => api.post('/checkout', data);
 
 //Review API
-export const getProductReviews = (productId) => api.get(`/products/${productId}/reviews`);
+export const getProductReviews = (productId, params = {}) => api.get(`/products/${productId}/reviews`, { params });
 export const submitReviewApi = (productId, data) => api.post(`/products/${productId}/reviews`, data);
 
 // Admin APIs
@@ -85,3 +90,36 @@ export const deleteVoucherApi = (id) => api.delete(`/admin/vouchers/${id}`);
 export const getAdminSettingsApi = () => api.get('/admin/settings');
 export const updateAdminSettingsApi = (data) => api.post('/admin/settings', data);
 export default api;
+export const getSuppliersApi = () => api.get('/admin/suppliers');
+export const saveSupplierApi = (data, id = null) => id ? api.put(`/admin/suppliers/${id}`, data) : api.post('/admin/suppliers', data);
+export const getInventorySummaryApi = () => api.get('/admin/inventory/summary');
+export const getInventoryProductsApi = (params = {}) => api.get('/admin/inventory/products', { params });
+export const getImportReceiptsApi = (params = {}) => api.get('/admin/import-receipts', { params });
+export const getImportReceiptApi = (id) => api.get(`/admin/import-receipts/${id}`);
+export const createImportReceiptApi = (data) => api.post('/admin/import-receipts', data);
+export const getOrderReturnApi = (id) => api.get(`/orders/${id}/return-request`);
+export const createOrderReturnApi = (id, data) => api.post(`/orders/${id}/return-request`, data);
+export const getAdminReturnsApi = (params = {}) => api.get('/admin/return-requests', { params });
+export const getAdminReturnApi = (id) => api.get(`/admin/return-requests/${id}`);
+export const updateAdminReturnApi = (id, data) => api.put(`/admin/return-requests/${id}`, data);
+export const confirmCodPaymentApi = (id, data) => api.post(`/admin/orders/${id}/confirm-cod`, data);
+export const getMyWarrantiesApi = (page = 1) => api.get('/warranties/my', { params: { page } });
+export const requestWarrantyServiceApi = (id, data) => api.post(`/warranties/${id}/service-requests`, data);
+export const getAdminWarrantiesApi = (params = {}) => api.get('/admin/warranties', { params });
+export const getWarrantyOrdersApi = (params = {}) => api.get('/admin/warranties/orders', { params });
+export const createWarrantyApi = (data) => api.post('/admin/warranties', data);
+export const getAdminWarrantyApi = (id) => api.get(`/admin/warranties/${id}`);
+export const updateWarrantyStatusApi = (id, data) => api.put(`/admin/warranties/${id}/status`, data);
+export const getWarrantyServicesApi = (params = {}) => api.get('/admin/warranty-services', { params });
+export const getWarrantyServiceApi = (id) => api.get(`/admin/warranty-services/${id}`);
+export const updateWarrantyServiceApi = (id, data) => api.put(`/admin/warranty-services/${id}`, data);
+
+export const getWishlistApi = () => api.get('/wishlist');
+export const saveFavoriteApi = (id) => api.put('/wishlist/'+id);
+export const removeFavoriteApi = (id) => api.delete('/wishlist/'+id);
+
+export const getMyReviewsApi = (page = 1) => api.get('/reviews/my', { params: { page } });
+export const updateReviewApi = (id, data) => api.put('/reviews/'+id, data);
+export const deleteReviewApi = (id) => api.delete('/reviews/'+id);
+
+export const mergeGuestCartApi = (data) => api.post('/cart/merge', data);

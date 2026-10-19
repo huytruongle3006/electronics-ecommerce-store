@@ -1,7 +1,8 @@
 import React from 'react';
+import FavoriteButton from './FavoriteButton';
 import { ShoppingCart } from 'lucide-react';
 
-export default function ProductCard({ product, onAddToCart, onViewDetail }) {
+export default function ProductCard({ product, onAddToCart, onViewDetail, isFavorite, favoriteBusy, onToggleFavorite }) {
   let specs = product.specifications;
   if (typeof specs === 'string') {
     try { specs = JSON.parse(specs); } catch (e) { specs = {}; }
@@ -47,6 +48,7 @@ export default function ProductCard({ product, onAddToCart, onViewDetail }) {
         </div>
       </div>
 
+      <div style={{ padding: '0 16px 12px' }}><FavoriteButton saved={isFavorite} disabled={favoriteBusy} onClick={() => onToggleFavorite?.(product)} /></div>
       {/* Vùng Giá và Nút Mua (Ngăn không bị trigger click của card) */}
       <div style={{ padding: '0 16px 16px', marginTop: 'auto', borderTop: '1px solid #f1f5f9', paddingTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>

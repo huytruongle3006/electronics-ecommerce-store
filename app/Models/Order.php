@@ -36,6 +36,19 @@ class Order extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function scopeWithoutRefunds($query)
+    {
+        return $query->whereDoesntHave('payment', fn ($payment) => $payment->where('payment_status', 'refunded'));
+    }
+
+    public function completedAt()
+    {
+        $date = $this->histories()->where('status_changed', 'completed')
+            ->where(fn ($history) => $history->whereNull('note')->orWhere('note', 'not like', 'Xác nhận đã thu COD.%'))
+            ->oldest('created_at')->value('created_at') ?? $this->updated_at;
+        return \Illuminate\Support\Carbon::parse($date);
+    }
+
     public function voucher()
     {
         return $this->belongsTo(Voucher::class, 'voucher_id');

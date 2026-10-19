@@ -1,3 +1,5 @@
+import { canChangeOrderStatus, cancellationNote } from '../utils/orderStatus';
+import ConfirmCodPayment from './ConfirmCodPayment';
 import React, { useState, useEffect } from 'react';
 import { Search, Eye, X, Package, CheckCircle, Clock, Truck, Check, AlertCircle } from 'lucide-react';
 import { getAdminOrdersApi, updateOrderStatusApi } from '../services/api';
@@ -47,11 +49,11 @@ export default function OrderManagement() {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await updateOrderStatusApi(orderId, newStatus);
+      const { data } = await updateOrderStatusApi(orderId, newStatus);
       // Cập nhật ngay trên state giao diện
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...data.data, status: newStatus } : o));
       if (selectedOrder && selectedOrder.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+        setSelectedOrder(prev => ({ ...prev, ...data.data, status: newStatus }));
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Không thể cập nhật trạng thái đơn hàng');
@@ -158,10 +160,13 @@ export default function OrderManagement() {
                     <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px', backgroundColor: '#f1f5f9', fontWeight: 600, color: '#334155' }}>
                       {order.payment?.payment_method?.toUpperCase() || 'COD'}
                     </span>
+                    <div>{order.payment?.payment_status === 'refunded' ? 'Đã hoàn tiền' : order.payment?.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa xác nhận thu tiền'}</div>
+                    <ConfirmCodPayment order={order} onConfirmed={() => fetchOrders()} />
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <select
                       value={order.status}
+                      disabled={['cancelled', 'completed'].includes(order.status)}
                       onChange={(e) => handleStatusChange(order.id, e.target.value)}
                       style={{
                         padding: '6px 10px',
@@ -175,12 +180,13 @@ export default function OrderManagement() {
                         cursor: 'pointer'
                       }}
                     >
-                      <option value="pending">Chờ duyệt</option>
-                      <option value="confirmed">Đã xác nhận</option>
-                      <option value="shipping">Đang giao</option>
-                      <option value="completed">Hoàn tất</option>
-                      <option value="cancelled">Hủy đơn</option>
+                      <option value="pending" disabled={!canChangeOrderStatus(order.status, 'pending')}>Chờ duyệt</option>
+                      <option value="confirmed" disabled={!canChangeOrderStatus(order.status, 'confirmed')}>Đã xác nhận</option>
+                      <option value="shipping" disabled={!canChangeOrderStatus(order.status, 'shipping')}>Đang giao</option>
+                      <option value="completed" disabled={!canChangeOrderStatus(order.status, 'completed')}>Hoàn tất</option>
+                      <option value="cancelled" disabled={!canChangeOrderStatus(order.status, 'cancelled')}>Hủy đơn</option>
                     </select>
+                    {order.status === 'cancelled' && <div style={{ maxWidth: 260, fontSize: 12, color: '#b91c1c', marginTop: 8, whiteSpace: 'pre-wrap' }}>{cancellationNote(order) || 'Đơn đã hủy.'}{order.payment?.payment_status === 'paid' && <div>Đã thanh toán — cần xử lý hoàn tiền.</div>}</div>}
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     <button

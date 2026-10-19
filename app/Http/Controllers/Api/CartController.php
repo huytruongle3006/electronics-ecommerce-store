@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -7,110 +6,51 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
-    // Lấy giỏ hàng của user đang đăng nhập
     public function index(Request $request)
     {
-        $cart = Cart::firstOrCreate(['user_id' => $request->user()->id]);
-        $items = CartItem::with('product')->where('cart_id', $cart->id)->get();
-
-        $totalAmount = $items->sum(function ($item) {
-            return $item->quantity * $item->product->price;
-        });
-
-        return response()->json([
-            'success' => true,
-            'cart_id' => $cart->id,
-            'items' => $items,
-            'total_amount' => $totalAmount
-        ], 200);
+        $cart = Cart::where('user_id', $request->user()->id)->first();
+        $items = $cart ? CartItem::with('product')->where('cart_id', $cart->id)->get() : collect();
+        return response()->json(['success' => true, 'cart_id' => $cart?->id, 'items' => $items,
+            'total_amount' => $items->sum(fn ($item) => $item->quantity * ($item->product?->price ?? 0))]);
     }
-
-    // Thêm sản phẩm vào giỏ
     public function addToCart(Request $request)
     {
-        $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $product = Product::findOrFail($request->product_id);
-
-        if ($product->quantity < $request->quantity) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Số lượng tồn kho không đủ (Hiện còn: ' . $product->quantity . ' sản phẩm)'
-            ], 400);
-        }
-
-        $cart = Cart::firstOrCreate(['user_id' => $request->user()->id]);
-
-        $cartItem = CartItem::where('cart_id', $cart->id)
-                            ->where('product_id', $product->id)
-                            ->first();
-
-        if ($cartItem) {
-            $newQuantity = $cartItem->quantity + $request->quantity;
-            if ($newQuantity > $product->quantity) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tổng số lượng trong giỏ vượt quá tồn kho'
-                ], 400);
-            }
-            $cartItem->quantity = $newQuantity;
-            $cartItem->save();
-        } else {
-            $cartItem = CartItem::create([
-                'cart_id' => $cart->id,
-                'product_id' => $product->id,
-                'quantity' => $request->quantity,
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã thêm sản phẩm vào giỏ hàng',
-            'data' => $cartItem->load('product')
-        ], 200);
+        $data = $request->validate(['product_id' => 'required|integer', 'quantity' => 'required|integer|between:1,999']);
+        return DB::transaction(function () use ($request, $data) {
+            DB::table('users')->where('id', $request->user()->id)->lockForUpdate()->first();
+            $product = Product::findOrFail($data['product_id']);
+            abort_unless($product->status === 'active', 422, 'Sản phẩm không còn mở bán.');
+            $cart = Cart::firstOrCreate(['user_id' => $request->user()->id]);
+            $item = CartItem::where('cart_id', $cart->id)->where('product_id', $product->id)->first();
+            $quantity = ($item?->quantity ?? 0) + $data['quantity'];
+            abort_if($quantity > min(999, $product->quantity), 400, 'Số lượng vượt tồn kho hoặc giới hạn 999 sản phẩm.');
+            if ($item) $item->update(['quantity' => $quantity]);
+            else $item = CartItem::create(['cart_id' => $cart->id, 'product_id' => $product->id, 'quantity' => $quantity]);
+            return response()->json(['success' => true, 'data' => $item->load('product')]);
+        }, 3);
     }
-
-    // Cập nhật số lượng
-    public function updateQuantity(Request $request, $id)
+    public function updateQuantity(Request $request, int $id)
     {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $cartItem = CartItem::with('product')->findOrFail($id);
-
-        if ($request->quantity > $cartItem->product->quantity) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tồn kho không đủ đáp ứng'
-            ], 400);
-        }
-
-        $cartItem->quantity = $request->quantity;
-        $cartItem->save();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cập nhật số lượng thành công',
-            'data' => $cartItem
-        ], 200);
+        $data = $request->validate(['quantity' => 'required|integer|between:1,999']);
+        return DB::transaction(function () use ($request, $id, $data) {
+            DB::table('users')->where('id', $request->user()->id)->lockForUpdate()->first();
+            $item = CartItem::whereHas('cart', fn ($q) => $q->where('user_id', $request->user()->id))->findOrFail($id);
+            $product = $item->product;
+            abort_unless($product && $product->status === 'active' && $product->quantity >= $data['quantity'], 422, 'Sản phẩm ngừng bán hoặc không đủ tồn kho.');
+            $item->update($data);
+            return response()->json(['success' => true, 'data' => $item]);
+        }, 3);
     }
-
-    // Xóa sản phẩm khỏi giỏ hàng
-    public function removeItem($id)
+    public function removeItem(Request $request, int $id)
     {
-        $cartItem = CartItem::findOrFail($id);
-        $cartItem->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã xóa sản phẩm khỏi giỏ hàng'
-        ], 200);
+        return DB::transaction(function () use ($request, $id) {
+            DB::table('users')->where('id', $request->user()->id)->lockForUpdate()->first();
+            CartItem::whereHas('cart', fn ($q) => $q->where('user_id', $request->user()->id))->findOrFail($id)->delete();
+            return response()->json(['success' => true, 'message' => 'Đã xóa khỏi giỏ.']);
+        }, 3);
     }
 }

@@ -141,7 +141,7 @@ export default function ProductCategoryManagement() {
         tenSP: '',
         category_id: categories[0]?.id || '',
         price: '',
-        quantity: 10,
+        quantity: 0,
         warranty_months: 12,
         cpu: '',
         ram: '',
@@ -161,7 +161,7 @@ export default function ProductCategoryManagement() {
       tenSP: prodForm.tenSP,
       category_id: Number(prodForm.category_id),
       price: Number(prodForm.price),
-      quantity: Number(prodForm.quantity),
+      ...(editingProduct ? {} : { quantity: Number(prodForm.quantity) }),
       warranty_months: Number(prodForm.warranty_months),
       description: prodForm.description,
       status: prodForm.status,
@@ -499,7 +499,8 @@ export default function ProductCategoryManagement() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Tồn kho</label>
-                  <input type="number" required value={prodForm.quantity} onChange={e => setProdForm({ ...prodForm, quantity: e.target.value })} style={{ width: '100%', boxSizing: 'border-box', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                  <input type="number" required readOnly={!!editingProduct} title={editingProduct ? "Tồn kho thay đổi qua phiếu nhập và đơn hàng" : "Tồn kho ban đầu"} value={prodForm.quantity} onChange={e => setProdForm({ ...prodForm, quantity: e.target.value })} style={{ width: '100%', boxSizing: 'border-box', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+                  {editingProduct && <small style={{ color: '#64748b' }}>Nhập thêm hàng tại Kho & nhập hàng.</small>}
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Bảo hành (tháng)</label>

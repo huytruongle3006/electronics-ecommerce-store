@@ -38,4 +38,9 @@ class Warranty extends Model
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
+
+    public function serviceRequests()
+    {
+        return $this->hasMany(WarrantyServiceRequest::class)->orderByDesc('id');
+    }
 }

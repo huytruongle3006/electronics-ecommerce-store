@@ -60,11 +60,11 @@ class ProductController extends Controller
 
     /**
      * Lấy chi tiết 1 sản phẩm kèm thông số kỹ thuật (specifications),
-     * danh mục, nhà cung cấp và đánh giá.
+     * danh mục và nhà cung cấp. Đánh giá lấy qua API phân trang riêng.
      */
     public function show($id)
     {
-        $product = Product::with(['category', 'supplier', 'reviews.user'])->find($id);
+        $product = Product::with(['category', 'supplier'])->find($id);
 
         if (!$product) {
             return response()->json([

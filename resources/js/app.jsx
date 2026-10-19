@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 import Navbar from './components/Navbar';
+import useStoreCart from './hooks/useStoreCart';
+import CartSyncNotice from './components/CartSyncNotice';
+import WishlistModal from './components/WishlistModal';
+import MyReviewsModal from './components/MyReviewsModal';
+import useWishlist from './hooks/useWishlist';
+import AccountModal from './components/AccountModal';
+import PasswordRecovery, { parsePasswordResetLink } from './components/PasswordRecovery';
 import FilterBar from './components/FilterBar';
 import MyOrdersModal from './components/MyOrdersModal';
 import ProductCard from './components/ProductCard';
@@ -12,7 +19,7 @@ import ProductDetailModal from './components/ProductDetailModal';
 import AdminDashboard from './components/AdminDashboard';
 import {
     getProducts, getCategories, logoutApi,
-    getCartApi, addToCartApi, updateCartItemApi, removeCartItemApi
+
 } from './services/api';
 import { AlertCircle } from 'lucide-react';
 const checkIsAdmin = (user) => {
@@ -47,12 +54,16 @@ function App() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedProductId, setSelectedProductId] = useState(null);
+    const [isMyReviewsOpen, setIsMyReviewsOpen] = useState(false);
     const [isOrdersOpen, setIsOrdersOpen] = useState(false);
+    const [isAccountOpen, setIsAccountOpen] = useState(false);
+    const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
+    const [resetData, setResetData] = useState(() => parsePasswordResetLink(window.location));
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('ALL');
     const [sortBy, setSortBy] = useState('newest');
 
-    const [cartItems, setCartItems] = useState([]);
+
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isWarrantyOpen, setIsWarrantyOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -68,6 +79,26 @@ function App() {
             return null;
         }
     });
+
+    const cart = useStoreCart(currentUser);
+    const cartItems = cart.items;
+    const loadCartFromDB = cart.load, addToCart = cart.add, updateCartQty = cart.update, removeFromCart = cart.remove;
+    useEffect(() => {
+        const syncAccount = event => {
+            if (event.key !== 'user_info') return;
+            try { setCurrentUser(JSON.parse(localStorage.getItem('user_info') || 'null')); }
+            catch { setCurrentUser(null); }
+        };
+        window.addEventListener('storage', syncAccount);
+        return () => window.removeEventListener('storage', syncAccount);
+    }, []);
+    const wishlist = useWishlist(currentUser);
+    const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+    useEffect(() => { setIsWishlistOpen(false); setIsMyReviewsOpen(false); setSelectedProductId(null); }, [currentUser?.id]);
+    const toggleFavorite = product => {
+        if (!currentUser) { setSelectedProductId(null); setIsAuthOpen(true); return; }
+        return wishlist.toggle(product);
+    };
 
     const [isAdminView, setIsAdminView] = useState(() => {
         try {
@@ -102,91 +133,10 @@ function App() {
             });
     }, []);
 
-    // Đồng bộ giỏ hàng từ Database nếu user đã đăng nhập
-    const loadCartFromDB = () => {
-        if (currentUser) {
-            getCartApi()
-                .then((res) => {
-                    if (res.data.success) {
-                        setCartItems(res.data.items || []);
-                    }
-                })
-                .catch((err) => console.error('Lỗi nạp giỏ hàng:', err));
-        }
-    };
-
-    useEffect(() => {
-        loadCartFromDB();
-    }, [currentUser]);
-
-    // Đăng xuất
     const handleLogout = async () => {
-        try { await logoutApi(); } catch (e) { }
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('user_info');
-        setCurrentUser(null);
-        setIsAdminView(false); // Quay lại trang store khách hàng
-        setCartItems([]);
-    };
-
-    // Thêm vào giỏ hàng (Đồng bộ Database nếu đã đăng nhập)
-    const addToCart = async (product) => {
-        if (currentUser) {
-            try {
-                await addToCartApi(product.id, 1);
-                loadCartFromDB(); // Nạp lại giỏ mới nhất từ database
-            } catch (err) {
-                alert(err.response?.data?.message || 'Không thể thêm vào giỏ hàng');
-            }
-        } else {
-            // Nếu chưa đăng nhập, lưu tạm trong bộ nhớ State
-            setCartItems(prev => {
-                const exist = prev.find(i => i.id === product.id);
-                if (exist) {
-                    return prev.map(i => i.id === product.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
-                }
-                return [...prev, { ...product, quantity: 1, product: product }];
-            });
-        }
-    };
-
-    // Thay đổi số lượng
-    const updateCartQty = async (itemId, delta) => {
-        const item = cartItems.find(i => i.id === itemId);
-        if (!item) return;
-
-        const currentQty = item.quantity || item.cartQty || 1;
-        const newQty = currentQty + delta;
-
-        if (newQty <= 0) {
-            removeFromCart(itemId);
-            return;
-        }
-
-        if (currentUser) {
-            try {
-                await updateCartItemApi(itemId, newQty);
-                loadCartFromDB();
-            } catch (err) {
-                alert(err.response?.data?.message || 'Lỗi cập nhật số lượng');
-            }
-        } else {
-            setCartItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: newQty } : i));
-        }
-    };
-
-    // Xóa món hàng
-    const removeFromCart = async (itemId) => {
-        if (currentUser) {
-            try {
-                await removeCartItemApi(itemId);
-                loadCartFromDB();
-            } catch (err) {
-                alert('Không thể xóa sản phẩm khỏi giỏ hàng');
-            }
-        } else {
-            setCartItems(prev => prev.filter(i => i.id !== itemId));
-        }
+        try { await logoutApi(); } catch {}
+        localStorage.removeItem('access_token'); localStorage.removeItem('user_info');
+        setCurrentUser(null); setIsAccountOpen(false); setIsAdminView(false); setIsCartOpen(false); setIsCheckoutOpen(false);
     };
 
     // Tính tổng tiền
@@ -218,6 +168,32 @@ function App() {
     }, [products, searchQuery, selectedCategory, sortBy]);
 
 
+    const leaveRecovery = (login = false) => {
+        setIsRecoveryOpen(false);
+        setResetData(null);
+        if (window.location.pathname.replace(/\/$/, '') === '/reset-password') {
+            window.history.replaceState({}, '', '/');
+        }
+        setIsAuthOpen(login);
+        if (login) setIsAdminView(false);
+    };
+
+    if (resetData || isRecoveryOpen) {
+        return <PasswordRecovery resetData={resetData}
+            onClose={() => leaveRecovery()}
+            onLogin={() => leaveRecovery(true)}
+            onResetComplete={() => {
+                window.history.replaceState({}, '', '/reset-password');
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('user_info');
+                setCurrentUser(null);
+                
+                setIsAdminView(false);
+                setIsAccountOpen(false);
+            }}
+        />;
+    }
+
     if (isAdminView) {
         return <AdminDashboard onBackToStore={() => setIsAdminView(false)} />;
     }
@@ -227,6 +203,12 @@ function App() {
             <Navbar
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
+                favoriteCount={wishlist.items.length}
+                onOpenFavorites={() => {
+                    if (!currentUser) { setIsAuthOpen(true); return; }
+                    wishlist.reload(); setIsWishlistOpen(true);
+                }}
+                cartBusy={cart.busy}
                 cartCount={totalCount}
                 onOpenCart={() => setIsCartOpen(true)}
                 onOpenWarranty={() => setIsWarrantyOpen(true)}
@@ -234,7 +216,9 @@ function App() {
                 user={currentUser}
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onLogout={handleLogout}
+                onOpenMyReviews={() => setIsMyReviewsOpen(true)}
                 onOpenOrders={() => setIsOrdersOpen(true)}
+                onOpenAccount={() => setIsAccountOpen(true)}
                 onOpenAdmin={() => setIsAdminView(true)}
             />
 
@@ -248,6 +232,8 @@ function App() {
                 />
             </div>
 
+            {currentUser && wishlist.error && <div role="alert" style={{ maxWidth: 1200, margin: '16px auto', padding: 16, background: '#fff1f2' }}>{wishlist.error} <button onClick={wishlist.reload}>Tải lại yêu thích</button></div>}
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}><CartSyncNotice cart={cart} /></div>
             <main style={{ maxWidth: '1240px', margin: '24px auto', padding: '0 20px' }}>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '80px 0' }}>Đang tải danh sách thiết bị...</div>
@@ -262,6 +248,9 @@ function App() {
                             <ProductCard
                                 key={p.id}
                                 product={p}
+                                isFavorite={wishlist.has(p.id)}
+                                favoriteBusy={!!currentUser && (wishlist.loading || wishlist.busy || !!wishlist.error)}
+                                onToggleFavorite={toggleFavorite}
                                 onAddToCart={addToCart}
                                 onViewDetail={(id) => setSelectedProductId(id)}
                             />
@@ -270,10 +259,41 @@ function App() {
                 )}
             </main>
 
+            {isAccountOpen && currentUser && <AccountModal
+                user={currentUser}
+                onClose={() => setIsAccountOpen(false)}
+                onUpdated={(updated) => {
+                    const merged = { ...currentUser, ...updated };
+                    localStorage.setItem('user_info', JSON.stringify(merged));
+                    setCurrentUser(merged);
+                }}
+                onPasswordChanged={() => {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('user_info');
+                    setCurrentUser(null);
+                    
+                    setIsAdminView(false);
+                    setIsAccountOpen(false);
+                    alert('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+                    setIsAuthOpen(true);
+                }}
+                onSessionExpired={() => {
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('user_info');
+                    setCurrentUser(null);
+                    
+                    setIsAdminView(false);
+                    setIsAccountOpen(false);
+                    alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                    setIsAuthOpen(true);
+                }}
+            />}
             {/* Drawer Giỏ hàng */}
             <CartDrawer
                 isOpen={isCartOpen}
                 onClose={() => setIsCartOpen(false)}
+                busy={cart.busy || !!cart.error}
+                notice={<CartSyncNotice cart={cart} />}
                 cartItems={cartItems}
                 onUpdateQty={updateCartQty}
                 onRemoveItem={removeFromCart}
@@ -293,24 +313,25 @@ function App() {
             {/* Modal Tra cứu Bảo hành */}
             <WarrantyModal
                 isOpen={isWarrantyOpen}
+                user={currentUser}
                 onClose={() => setIsWarrantyOpen(false)}
             />
 
             {/* Modal Đăng nhập / Đăng ký */}
-            <AuthModal
+            {isAuthOpen && <AuthModal
                 isOpen={isAuthOpen}
+                onForgotPassword={() => { setIsAuthOpen(false); setIsRecoveryOpen(true); }}
                 onClose={() => setIsAuthOpen(false)}
                 onAuthSuccess={(user) => {
                     setCurrentUser(user);
-                    loadCartFromDB();
                     if (checkIsAdmin(user)) {
                         setIsAdminView(true);
                     }
                 }}
-            />
+            />}
 
             {/* Modal Thanh toán Checkout */}
-            <CheckoutModal
+            {isCheckoutOpen && <CheckoutModal
                 isOpen={isCheckoutOpen}
                 onClose={() => setIsCheckoutOpen(false)}
                 cartItems={cartItems}
@@ -318,24 +339,34 @@ function App() {
                 user={currentUser}
                 onOrderSuccess={() => {
                     // Xóa giỏ hàng local và tải lại giỏ trống từ DB
-                    setCartItems([]);
+                    
                     loadCartFromDB();
                 }}
-            />
-            <ProductDetailModal
+            />}
+            {isMyReviewsOpen && currentUser && <MyReviewsModal key={currentUser.id}
+                onClose={() => setIsMyReviewsOpen(false)}
+                onViewProduct={id => { setIsMyReviewsOpen(false); setSelectedProductId(id); }} />}
+            {isWishlistOpen && currentUser && <WishlistModal key={currentUser.id} wishlist={wishlist}
+                onClose={() => setIsWishlistOpen(false)}
+                onViewDetail={id => { setIsWishlistOpen(false); setSelectedProductId(id); }}
+                onAddToCart={addToCart} />}
+            {selectedProductId && <ProductDetailModal key={selectedProductId}
+                isFavorite={wishlist.has(selectedProductId)}
+                favoriteBusy={!!currentUser && (wishlist.loading || wishlist.busy || !!wishlist.error)}
+                onToggleFavorite={toggleFavorite}
                 productId={selectedProductId}
                 isOpen={!!selectedProductId}
                 onClose={() => setSelectedProductId(null)}
                 user={currentUser}
                 onOpenAuth={() => setIsAuthOpen(true)}
-                onAddToCart={(product, qty) => {
-                    for (let i = 0; i < qty; i++) {
-                        addToCart(product);
-                    }
-                }}
-            />
+                onAddToCart={addToCart}
+            />}
             <MyOrdersModal
                 isOpen={isOrdersOpen}
+                onOrderChanged={() => {
+                    getProducts().then(res => setProducts(res.data.data?.data || res.data.data || []))
+                        .catch(err => console.error('Không tải lại được tồn kho:', err));
+                }}
                 onClose={() => setIsOrdersOpen(false)}
             />
         </div>

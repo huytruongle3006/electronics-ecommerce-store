@@ -15,10 +15,10 @@ class AdminController extends Controller
     // 1. Thống kê tổng quan
     public function dashboardStats()
     {
-        $totalRevenue = Order::where('status', 'completed')->sum('final_amount');
+        $totalRevenue = Order::withoutRefunds()->where('status', 'completed')->sum('final_amount');
         $totalOrders = Order::count();
         $totalCustomers = User::whereHas('roles', function($q) {
-            $q->where('name', 'CUSTOMER');
+            $q->where('maRole', 'CUSTOMER');
         })->count();
         $lowStockProducts = Product::where('quantity', '<=', 5)->count();
 
@@ -43,7 +43,7 @@ class AdminController extends Controller
     public function getOrders(Request $request)
     {
         $status = $request->query('status');
-        $query = Order::with(['details.product', 'payment', 'user'])->latest();
+        $query = Order::with(['details.product', 'payment', 'user', 'histories'])->latest();
 
         if ($status && $status !== 'all') {
             $query->where('status', $status);
@@ -59,49 +59,43 @@ class AdminController extends Controller
     public function updateOrderStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:pending,confirmed,shipping,completed,cancelled'
+            'status' => 'required|in:pending,confirmed,shipping,completed,cancelled',
         ]);
 
-        $order = Order::with('details.product')->findOrFail($id);
-        $oldStatus = $order->status;
-        $newStatus = $request->status;
-
-        if ($oldStatus === $newStatus) {
-            return response()->json(['success' => true, 'message' => 'Trạng thái không đổi']);
-        }
-
-        DB::transaction(function () use ($order, $newStatus, $request) {
-            // Nếu hủy đơn hàng -> Hoàn lại tồn kho cho sản phẩm
-            if ($newStatus === 'cancelled' && $order->status !== 'cancelled') {
-                foreach ($order->details as $detail) {
-                    $detail->product->increment('quantity', $detail->quantity);
-                }
+        return DB::transaction(function () use ($request, $id) {
+            $order = Order::whereKey($id)->lockForUpdate()->firstOrFail();
+            $newStatus = $request->status;
+            if ($order->status === $newStatus) {
+                return response()->json(['success' => true, 'message' => 'Trạng thái không đổi', 'data' => $order]);
             }
-
-            // Nếu đơn trước đó bị cancelled mà nay bật lại confirmed/shipping -> Trừ lại kho
-            if ($order->status === 'cancelled' && in_array($newStatus, ['confirmed', 'shipping', 'completed'])) {
-                foreach ($order->details as $detail) {
-                    $detail->product->decrement('quantity', $detail->quantity);
-                }
+            $allowed = [
+                'pending' => ['confirmed', 'cancelled'],
+                'confirmed' => ['shipping', 'cancelled'],
+                'shipping' => ['completed'],
+                'completed' => [],
+                'cancelled' => [],
+            ];
+            if (!in_array($newStatus, $allowed[$order->status] ?? [], true)) {
+                return response()->json(['success' => false, 'message' => 'Không thể chuyển trạng thái này. Đơn đã hủy hoặc hoàn tất không được mở lại.'], 409);
             }
-
-            $order->status = $newStatus;
-            $order->save();
-
-            // Ghi nhận lịch sử
-            OrderHistory::create([
-                'order_id'       => $order->id,
-                'status_changed' => $newStatus,
-                'changed_by'     => $request->user()->id,
-                'note'           => "Quản trị viên cập nhật trạng thái sang {$newStatus}",
+            if ($newStatus === 'cancelled') {
+                app(\App\Services\OrderCancellation::class)->cancelLocked($order, $request->user(), 'Quản trị viên hủy đơn.');
+            } else {
+                $order->update(['status' => $newStatus]);
+                OrderHistory::create([
+                    'order_id' => $order->id,
+                    'status_changed' => $newStatus,
+                    'changed_by' => $request->user()->id,
+                    'note' => "Quản trị viên cập nhật trạng thái sang {$newStatus}",
+                    'created_at' => now(),
+                ]);
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật trạng thái đơn hàng thành công!',
+                'data' => $order->load(['details.product', 'payment', 'histories']),
             ]);
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Cập nhật trạng thái đơn hàng thành công!',
-            'data'    => $order
-        ]);
+        }, 3);
     }
 
     // 4. Quản lý sản phẩm: Thêm mới
@@ -146,13 +140,12 @@ class AdminController extends Controller
         $request->validate([
             'tenSP'           => 'required|string|max:255',
             'price'           => 'required|numeric|min:0',
-            'quantity'        => 'required|integer|min:0',
             'warranty_months' => 'required|integer|min:0',
             'status'          => 'required|in:active,inactive',
         ]);
 
         $product->update($request->only([
-            'tenSP', 'category_id', 'price', 'quantity', 
+            'tenSP', 'category_id', 'price', 
             'warranty_months', 'description', 'specifications', 'status'
         ]));
 
@@ -301,7 +294,7 @@ class AdminController extends Controller
     public function financialReport(Request $request)
     {
         // 1. Tổng doanh thu hoàn tất
-        $completedOrders = \App\Models\Order::where('status', 'completed');
+        $completedOrders = \App\Models\Order::withoutRefunds()->where('status', 'completed');
         $totalRevenue = (clone $completedOrders)->sum('final_amount');
         $completedCount = (clone $completedOrders)->count();
 
@@ -321,7 +314,7 @@ class AdminController extends Controller
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('Y-m-d');
             $dayName = now()->subDays($i)->format('d/m');
-            $dayRevenue = \App\Models\Order::where('status', 'completed')
+            $dayRevenue = \App\Models\Order::withoutRefunds()->where('status', 'completed')
                 ->whereDate('created_at', $date)
                 ->sum('final_amount');
 
@@ -336,7 +329,7 @@ class AdminController extends Controller
             'pending'   => \App\Models\Order::where('status', 'pending')->count(),
             'confirmed' => \App\Models\Order::where('status', 'confirmed')->count(),
             'shipping'  => \App\Models\Order::where('status', 'shipping')->count(),
-            'completed' => $completedCount,
+            'completed' => \App\Models\Order::where('status', 'completed')->count(),
             'cancelled' => $cancelledCount,
         ];
 
@@ -345,6 +338,9 @@ class AdminController extends Controller
             ->join('orders', 'order_details.order_id', '=', 'orders.id')
             ->join('products', 'order_details.product_id', '=', 'products.id')
             ->where('orders.status', 'completed')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))->from('payments')->whereColumn('payments.order_id', 'orders.id')->where('payments.payment_status', 'refunded');
+            })
             ->select(
                 'products.id',
                 'products.maSP',

@@ -1,95 +1,76 @@
-import React, { useState } from 'react';
-import { ShieldCheck, X, CheckCircle } from 'lucide-react';
-import { checkWarranty } from '../services/api';
-
-export default function WarrantyModal({ isOpen, onClose }) {
-  if (!isOpen) return null;
-
-  const [serialQuery, setSerialQuery] = useState('');
-  const [warrantyResult, setWarrantyResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!serialQuery.trim()) return;
-
-    setLoading(true);
-    setError('');
-    setWarrantyResult(null);
-
-    try {
-      const res = await checkWarranty(serialQuery.trim());
-      setWarrantyResult(res.data.data);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Không tìm thấy thông tin bảo hành cho mã này.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-      <div style={{ width: '100%', maxWidth: '500px', backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden' }}>
-        
-        <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ShieldCheck size={22} color="#2563eb" />
-            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Tra Cứu Bảo Hành Điện Tử</h3>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <X size={20} color="#64748b" />
-          </button>
-        </div>
-
-        <div style={{ padding: '20px' }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <input 
-              type="text" 
-              placeholder="Nhập số Serial / IMEI sản phẩm..."
-              value={serialQuery}
-              onChange={(e) => setSerialQuery(e.target.value)}
-              style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }}
-            />
-            <button 
-              type="submit" 
-              disabled={loading}
-              style={{ padding: '10px 18px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
-            >
-              {loading ? 'Đang tra...' : 'Tra cứu'}
-            </button>
-          </form>
-
-          {error && (
-            <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.875rem' }}>
-              {error}
-            </div>
-          )}
-
-          {warrantyResult && (
-            <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#15803d', fontWeight: 700, marginBottom: '10px' }}>
-                <CheckCircle size={18} />
-                <span>Thông tin bảo hành chính hãng</span>
-              </div>
-              <div style={{ fontSize: '0.875rem', lineHeight: 1.8, color: '#334155' }}>
-                <div><strong>Thiết bị:</strong> {warrantyResult.product_name || 'N/A'}</div>
-                <div><strong>Số Serial:</strong> {warrantyResult.serial_number}</div>
-                <div><strong>Chủ sở hữu:</strong> {warrantyResult.customer_name}</div>
-                <div><strong>Ngày kích hoạt:</strong> {warrantyResult.start_date}</div>
-                <div><strong>Ngày hết hạn:</strong> {warrantyResult.end_date}</div>
-                <div>
-                  <strong>Tình trạng:</strong>{' '}
-                  <span style={{ color: warrantyResult.is_expired ? '#dc2626' : '#16a34a', fontWeight: 700 }}>
-                    {warrantyResult.is_expired ? 'ĐÃ HẾT HẠN' : 'CÒN HIỆU LỰC'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
+import React, { useEffect, useRef, useState } from 'react';
+import { checkWarranty, getMyWarrantiesApi, requestWarrantyServiceApi } from '../services/api';
+import { warrantyLabels, warrantyError, warrantyDate, ServiceTimeline } from './WarrantyShared';
+const input = { padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, font: 'inherit', boxSizing: 'border-box', maxWidth: '100%' };
+const button = { ...input, background: '#fff', cursor: 'pointer' };
+const primary = { ...button, background: '#2563eb', border: '1px solid #2563eb', color: '#fff' };
+export default function WarrantyModal({ isOpen, onClose, user }) {
+    return isOpen ? <WarrantyContent key={user?.id || 'guest'} onClose={onClose} user={user} /> : null;
+}
+function WarrantyContent({ onClose, user }) {
+    const [tab, setTab] = useState('lookup');
+    const [serial, setSerial] = useState(''); const [result, setResult] = useState(null);
+    const [rows, setRows] = useState([]); const [page, setPage] = useState(1); const [lastPage, setLastPage] = useState(1);
+    const [loading, setLoading] = useState(false); const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(''); const [message, setMessage] = useState(''); const [reload, setReload] = useState(0);
+    const [device, setDevice] = useState(null); const [problem, setProblem] = useState(''); const [phone, setPhone] = useState('');
+    const dialog = useRef(null);
+    useEffect(() => {
+        const previous = document.activeElement; const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden'; dialog.current?.querySelector('button')?.focus();
+        return () => { document.body.style.overflow = overflow; previous?.focus(); };
+    }, []);
+    useEffect(() => {
+        if (tab !== 'mine' || !user) return;
+        let active = true; setLoading(true); setError('');
+        getMyWarrantiesApi(page).then(({ data }) => { if (active) { setRows(data.data.data); setLastPage(data.data.last_page); } })
+            .catch(err => { if (active) setError(warrantyError(err)); }).finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [tab, page, reload, user]);
+    const lookup = async event => {
+        event.preventDefault(); if (busy) return; setBusy(true); setError(''); setResult(null);
+        try { const { data } = await checkWarranty(serial.trim()); setResult(data.data); }
+        catch (err) { setError(warrantyError(err)); } finally { setBusy(false); }
+    };
+    const send = async event => {
+        event.preventDefault(); if (busy) return;
+        if (problem.trim().length < 10) { setError('Mô tả lỗi cần ít nhất 10 ký tự.'); return; }
+        setBusy(true); setError(''); setMessage('');
+        try { const { data } = await requestWarrantyServiceApi(device, { problem: problem.trim(), contact_phone: phone.trim() }); setMessage(data.message); setDevice(null); setReload(value => value + 1); }
+        catch (err) { setError(warrantyError(err)); } finally { setBusy(false); }
+    };
+    const keyDown = event => {
+        if (event.key === 'Escape' && !busy) onClose();
+        if (event.key !== 'Tab') return;
+        const controls = [...dialog.current.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled)')];
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    return <div style={{ position: 'fixed', inset: 0, zIndex: 70, padding: 16, background: 'rgba(15,23,42,.6)', display: 'grid', placeItems: 'center' }}>
+        <section ref={dialog} onKeyDown={keyDown} role="dialog" aria-modal="true" aria-label="Bảo hành điện tử" style={{ width: '100%', maxWidth: 760, maxHeight: '92vh', overflowY: 'auto', background: '#fff', color: '#0f172a', borderRadius: 14, padding: 24, boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h3>Bảo hành điện tử</h3><button type="button" style={button} disabled={busy} onClick={onClose}>Đóng</button></div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}><button type="button" style={tab === 'lookup' ? primary : button} onClick={() => { setTab('lookup'); setError(''); setDevice(null); }} disabled={busy}>Tra cứu serial</button>{user && <button type="button" style={tab === 'mine' ? primary : button} disabled={busy} onClick={() => { setTab('mine'); setError(''); }}>Bảo hành của tôi</button>}</div>
+            {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}{message && <p role="status" style={{ color: '#15803d' }}>{message}</p>}
+            {tab === 'lookup' ? <>
+                <form onSubmit={lookup} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><input name="warranty_serial" aria-label="Serial cần tra cứu" required minLength={4} maxLength={100} style={{ ...input, flex: 1, minWidth: 180 }} value={serial} onChange={event => setSerial(event.target.value)} placeholder="Nhập serial hoặc IMEI" /><button type="submit" style={primary} disabled={busy}>{busy ? 'Đang tra cứu...' : 'Tra cứu'}</button></form>
+                {result && <div style={{ padding: 16, border: '1px solid #cbd5e1', marginTop: 16, borderRadius: 10 }}><strong>{result.product_name}</strong><p>Serial: {result.serial_number}</p><p>Từ {warrantyDate(result.start_date)} đến hết ngày {warrantyDate(result.end_date)}</p><strong>{warrantyLabels[result.effective_status] || 'Liên hệ cửa hàng'}</strong></div>}
+                {!user && <p style={{ color: '#64748b' }}>Đăng nhập để xem thiết bị của bạn và gửi yêu cầu bảo hành.</p>}
+            </> : loading ? <p role="status">Đang tải bảo hành...</p> : <>
+                <button type="button" style={button} disabled={busy} onClick={() => setReload(value => value + 1)}>Tải lại danh sách</button>
+                {!rows.length && <p>Chưa có phiếu bảo hành liên kết với đơn của bạn. Nếu đã nhận hàng, liên hệ cửa hàng để cấp serial.</p>}
+                {rows.map(warranty => <article key={warranty.id} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 10, marginTop: 14 }}>
+                    <strong>{warranty.product?.tenSP}</strong><p>Serial: {warranty.serial_number} · Đơn: {warranty.order?.maDH}</p><p>{warrantyDate(warranty.start_date)} – {warrantyDate(warranty.end_date)}</p><strong>{warrantyLabels[warranty.effective_status]}</strong>
+                    {(warranty.service_requests || []).map(service => <ServiceTimeline key={service.id} service={service} />)}
+                    {warranty.effective_status === 'valid' && (device !== warranty.id ? <button type="button" style={{ ...primary, marginTop: 12 }} onClick={() => { setDevice(warranty.id); setProblem(''); setPhone(user.phone || warranty.customer_phone || ''); setError(''); setMessage(''); }}>Yêu cầu bảo hành {warranty.serial_number}</button> : <form onSubmit={send} style={{ marginTop: 12 }}><fieldset disabled={busy} style={{ display: 'grid', gap: 12, border: 0, padding: 0 }}>
+                        <label>Mô tả lỗi (10–1000 ký tự)<textarea name="warranty_problem" required minLength={10} maxLength={1000} rows={3} style={{ ...input, width: '100%' }} value={problem} onChange={event => setProblem(event.target.value)} /></label>
+                        <label>Số điện thoại liên hệ<input name="warranty_phone" type="tel" required maxLength={20} style={{ ...input, width: '100%' }} value={phone} onChange={event => setPhone(event.target.value)} /></label>
+                        <p style={{ margin: 0, color: '#64748b' }}>Chờ cửa hàng tiếp nhận và hướng dẫn trước khi gửi thiết bị.</p>
+                        <div style={{ display: 'flex', gap: 10 }}><button type="submit" style={primary}>{busy ? 'Đang gửi...' : 'Gửi yêu cầu bảo hành'}</button><button type="button" style={button} onClick={() => setDevice(null)}>Để sau</button></div>
+                    </fieldset></form>)}
+                </article>)}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}><button type="button" style={button} disabled={busy || page <= 1} onClick={() => setPage(value => value - 1)}>Trước</button>Trang {page}/{lastPage}<button type="button" style={button} disabled={busy || page >= lastPage} onClick={() => setPage(value => value + 1)}>Sau</button></div>
+            </>}
+        </section>
+    </div>;
 }

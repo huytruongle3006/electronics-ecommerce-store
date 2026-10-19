@@ -12,11 +12,11 @@ class WarrantyController extends Controller
     public function check(Request $request)
     {
         $request->validate([
-            'serial_number' => 'required|string',
+            'serial_number' => 'required|string|min:4|max:100|regex:/^[A-Za-z0-9_.-]+$/',
         ]);
 
         $warranty = Warranty::with(['product', 'order'])
-            ->where('serial_number', $request->serial_number)
+            ->whereRaw('LOWER(serial_number) = ?', [strtolower(trim($request->serial_number))])
             ->first();
 
         if (!$warranty) {
@@ -26,18 +26,18 @@ class WarrantyController extends Controller
             ], 404);
         }
 
-        $isExpired = $warranty->end_date < now();
+        $effective = app(\App\Services\WarrantyPolicy::class)->effectiveStatus($warranty);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'serial_number' => $warranty->serial_number,
                 'product_name' => $warranty->product->tenSP ?? null,
-                'customer_name' => $warranty->customer_name,
-                'start_date' => $warranty->start_date,
-                'end_date' => $warranty->end_date,
+                'start_date' => $warranty->start_date->toDateString(),
+                'end_date' => $warranty->end_date->toDateString(),
                 'status' => $warranty->status,
-                'is_expired' => $isExpired,
+                'effective_status' => $effective,
+                'is_expired' => $effective === 'expired',
             ]
         ], 200);
     }

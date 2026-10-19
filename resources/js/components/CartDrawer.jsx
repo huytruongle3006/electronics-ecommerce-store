@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingCart, X, Trash2 } from 'lucide-react';
 
-export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQty, onRemoveItem, totalAmount, onOpenCheckout }) {
+export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQty, onRemoveItem, totalAmount, onOpenCheckout, busy = false, notice }) {
   if (!isOpen) return null;
 
   return (
@@ -19,6 +19,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQty, on
           </button>
         </div>
 
+        {notice && <div style={{ padding: '0 20px' }}>{notice}</div>}
         {/* Danh sách món đồ */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           {cartItems.length === 0 ? (
@@ -40,10 +41,10 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQty, on
                       {Number(product.price).toLocaleString('vi-VN')} đ
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
-                      <button onClick={() => onUpdateQty(item.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>-</button>
+                      <button disabled={busy} onClick={() => onUpdateQty(item.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>-</button>
                       <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.quantity || item.cartQty}</span>
-                      <button onClick={() => onUpdateQty(item.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>+</button>
-                      <button onClick={() => onRemoveItem(item.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                      <button disabled={busy} onClick={() => onUpdateQty(item.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}>+</button>
+                      <button disabled={busy} onClick={() => onRemoveItem(item.id)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -64,7 +65,7 @@ export default function CartDrawer({ isOpen, onClose, cartItems, onUpdateQty, on
               </span>
             </div>
             <button 
-              onClick={onOpenCheckout}
+              disabled={busy} onClick={onOpenCheckout}
               style={{ width: '100%', padding: '12px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
             >
               Tiến hành thanh toán

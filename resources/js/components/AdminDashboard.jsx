@@ -1,3 +1,4 @@
+import { canChangeOrderStatus, cancellationNote } from '../utils/orderStatus';
 import React, { useState, useEffect } from 'react';
 import UserManagement from './UserManagement';
 import ProductCategoryManagement from './ProductCategoryManagement';
@@ -5,6 +6,10 @@ import ProductCategoryManagement from './ProductCategoryManagement';
 import FinancialAnalytics from './FinancialAnalytics'; // ✅ Đã bổ sung import
 import VoucherManagement from './VoucherManagement'; // 👈 Thêm dòng này
 import SystemSettings from './SystemSettings';
+import InventoryManagement from './InventoryManagement';
+import ReturnManagement from './ReturnManagement';
+import WarrantyManagement from './WarrantyManagement';
+import ConfirmCodPayment from './ConfirmCodPayment';
 import {
     LayoutDashboard, ShoppingBag, Package, DollarSign, Users,
     AlertTriangle, ArrowLeft, BarChart3, RefreshCw, Ticket,Settings
@@ -114,7 +119,12 @@ export default function AdminDashboard({ onBackToStore }) {
                         }}
                     >
                         <Package size={18} />
-                        Sản phẩm & Kho
+                        Sản phẩm & Danh mục
+                    </button>
+
+                    <button type="button" onClick={() => setTab('inventory')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: 0, background: tab === 'inventory' ? '#2563eb' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600, textAlign: 'left' }}>
+                        <Package size={18} /> Kho & nhập hàng
                     </button>
 
                     <button
@@ -147,6 +157,14 @@ export default function AdminDashboard({ onBackToStore }) {
                     >
                         <Ticket size={18} />
                         Mã giảm giá
+                    </button>
+                    <button type="button" onClick={() => setTab('returns')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: 0, background: tab === 'returns' ? '#2563eb' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600, textAlign: 'left' }}>
+                        <ShoppingBag size={18} /> Trả hàng & hoàn tiền
+                    </button>
+                    <button type="button" onClick={() => setTab('warranties')}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 8, border: 0, background: tab === 'warranties' ? '#2563eb' : 'transparent', color: '#fff', cursor: 'pointer', fontWeight: 600, textAlign: 'left' }}>
+                        <Package size={18} /> Bảo hành
                     </button>
                     <button
                         onClick={() => setTab('settings')}
@@ -337,19 +355,23 @@ export default function AdminDashboard({ onBackToStore }) {
                                                 <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', backgroundColor: '#e2e8f0' }}>
                                                     {o.payment?.payment_method?.toUpperCase() || 'COD'}
                                                 </span>
+                                                <div style={{ fontSize: 12 }}>{o.payment?.payment_status === 'refunded' ? 'Đã hoàn tiền' : o.payment?.payment_status === 'paid' ? 'Đã thanh toán' : 'Chưa xác nhận thu tiền'}</div>
+                                                <ConfirmCodPayment order={o} onConfirmed={() => loadOrders(orderFilter)} />
                                             </td>
                                             <td style={{ padding: '14px 16px' }}>
                                                 <select
                                                     value={o.status}
+                      disabled={['cancelled', 'completed'].includes(o.status)}
                                                     onChange={(e) => handleUpdateStatus(o.id, e.target.value)}
                                                     style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600, fontSize: '0.8rem', outline: 'none' }}
                                                 >
-                                                    <option value="pending">Chờ duyệt (pending)</option>
-                                                    <option value="confirmed">Xác nhận (confirmed)</option>
-                                                    <option value="shipping">Đang giao (shipping)</option>
-                                                    <option value="completed">Hoàn tất (completed)</option>
-                                                    <option value="cancelled">Hủy đơn (cancelled)</option>
+                                                    <option value="pending" disabled={!canChangeOrderStatus(o.status, 'pending')}>Chờ duyệt (pending)</option>
+                                                    <option value="confirmed" disabled={!canChangeOrderStatus(o.status, 'confirmed')}>Xác nhận (confirmed)</option>
+                                                    <option value="shipping" disabled={!canChangeOrderStatus(o.status, 'shipping')}>Đang giao (shipping)</option>
+                                                    <option value="completed" disabled={!canChangeOrderStatus(o.status, 'completed')}>Hoàn tất (completed)</option>
+                                                    <option value="cancelled" disabled={!canChangeOrderStatus(o.status, 'cancelled')}>Hủy đơn (cancelled)</option>
                                                 </select>
+                    {o.status === 'cancelled' && <div style={{ maxWidth: 260, fontSize: 12, color: '#b91c1c', marginTop: 8, whiteSpace: 'pre-wrap' }}>{cancellationNote(o) || 'Đơn đã hủy.'}{o.payment?.payment_status === 'paid' && <div>Đã thanh toán — cần xử lý hoàn tiền.</div>}</div>}
                                             </td>
                                             <td style={{ padding: '14px 16px' }}>
                                                 <span style={{ fontSize: '0.8rem', color: '#2563eb', fontWeight: 600 }}>{o.details?.length || 0} món</span>
@@ -364,6 +386,9 @@ export default function AdminDashboard({ onBackToStore }) {
 
                 {/* --- TAB 3: QUẢN LÝ SẢN PHẨM & KHO --- */}
                 {tab === 'products' && <ProductCategoryManagement />}
+                {tab === 'inventory' && <InventoryManagement />}
+                {tab === 'returns' && <ReturnManagement />}
+                {tab === 'warranties' && <WarrantyManagement />}
 
                 {/* --- TAB 4: QUẢN LÝ NGƯỜI DÙNG & PHÂN QUYỀN --- */}
                 {tab === 'users' && <UserManagement />}

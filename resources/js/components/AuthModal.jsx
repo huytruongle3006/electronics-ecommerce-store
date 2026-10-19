@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Lock, Mail, User, Phone, MapPin } from 'lucide-react';
 import { loginApi, registerApi } from '../services/api';
 
-export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
+export default function AuthModal({ isOpen, onClose, onAuthSuccess, onForgotPassword }) {
   if (!isOpen) return null;
 
   const [isLogin, setIsLogin] = useState(true);
@@ -190,6 +190,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               {loading ? 'Đang xử lý...' : (isLogin ? 'Đăng Nhập' : 'Đăng Ký Tài Khoản')}
             </button>
           </form>
+
+          {isLogin && <button type="button" disabled={loading} onClick={onForgotPassword}
+            style={{ display: 'block', margin: '16px auto 0', background: 'none', border: 0, color: '#2563eb', fontWeight: 600, cursor: 'pointer' }}>
+            Quên mật khẩu?
+          </button>}
 
           {/* Chuyển đổi giữa Đăng nhập / Đăng ký */}
           <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.85rem', color: '#64748b' }}>
