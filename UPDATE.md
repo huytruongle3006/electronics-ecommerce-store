@@ -1,78 +1,83 @@
-# Cập nhật thông báo trong website
+# Cập nhật trợ lý AI chọn sản phẩm dùng Gemini Flash-Lite
 
-## Chức năng mới
+## Chức năng đã bổ sung và hoàn thiện
 
-- Chuông thông báo riêng theo tài khoản, số chưa đọc, danh sách phân trang 15 dòng, thời gian và trạng thái đã đọc.
-- Admin cập nhật đơn: xác nhận, đang giao, hoàn tất, hủy → chủ đơn nhận thông báo.
-- Admin xử lý đổi trả/hoàn tiền: duyệt, từ chối, nhận lại hàng, xác nhận đã hoàn tiền → chủ đơn nhận thông báo.
-- Admin cấp/cập nhật phiếu bảo hành hoặc xử lý hồ sơ bảo hành → user liên quan nhận thông báo.
-- Bấm thông báo mở chính xác đơn/phiếu bảo hành với kiểm tra quyền ở backend. Đánh dấu tất cả đã đọc không đánh dấu nhầm thông báo vừa đến sau lần tải.
-- Kiểm tra cập nhật mỗi 20 giây khi tab hiển thị; tải lại khi trở lại cửa sổ hoặc mở chuông; có xử lý lỗi/thử lại.
-- Lưu thông báo cùng transaction nghiệp vụ, không phát sinh nếu transaction thất bại. Cập nhật lặp cùng trạng thái không tạo trùng; bỏ phản hồi cũ sau khi đổi tài khoản.
-- Không gửi lại lịch sử cũ, không có thông báo đẩy khi đóng website. Không yêu cầu WebSocket, SMTP hay queue worker cho chức năng này.
+- Tư vấn theo nhu cầu, ngân sách và danh mục, chỉ lấy sản phẩm đang mở bán và còn hàng trong database.
+- Dùng Gemini API ở backend; mặc định gemini-3.5-flash-lite với thinking MINIMAL. Không tự dùng MINIMAL cho các model không hỗ trợ.
+- Đề xuất tối đa 3 sản phẩm từ nhóm tối đa 16 ứng viên; giá/tồn kho/thông số hiển thị do backend xác minh, không lấy thông tin tự do do AI viết.
+- Có xem chi tiết và thêm sản phẩm vào giỏ; tải lại giá và tình trạng hàng trước khi thêm.
+- Gộp thành tối đa 1 request Gemini mỗi lượt, rút gọn dữ liệu, cache quyết định hợp lệ 90 giây. Đổi hội thoại/bộ lọc/model/catalog làm thay khóa cache; kiểm tra lại sản phẩm trước khi trả kết quả.
+- Timeout API 18 giây, timeout phía frontend 27 giây và watchdog 30 giây để mở lại ô nhập, có bộ đếm thời gian. Không tự lặp request khi bị lỗi/quota.
+- Hiển thị mã HTTP/mã trạng thái an toàn cho lỗi upstream chưa phân loại; không in key hoặc nguyên lỗi nhà cung cấp.
+- Mỗi model/project vẫn chịu quota Gemini riêng; mặc định giới hạn ứng dụng 80 lần gọi/24h và 5 yêu cầu/phút/IP.
 
-## Các file thay đổi
+## File trong gói GitHub (12 file)
 
-So với bản sổ địa chỉ đã sửa lỗi: thêm 7 file, sửa 12 file (gồm hướng dẫn và UPDATE.md), không xóa file nào. Gói update-only chỉ chứa các file bên dưới. Những chức năng đã làm trước vẫn có trong source đầy đủ.
+Gói này chứa toàn bộ phần AI cập nhật so với source bản thông báo đã giao, dùng được khi repository đã có bản thông báo hoặc AI cũ. Không chứa lại tất cả tính năng trước đó; dùng đúng nền source và so sánh nếu nhóm đã chỉnh cùng file. So với bản thông báo: thêm 6 file và sửa 6 file, không xóa file.
 
-### File mới
+### File mới so với bản thông báo
 
-- `app/Http/Controllers/Api/NotificationController.php`
-- `app/Models/StoreNotification.php`
-- `app/Services/StoreNotifier.php`
-- `database/migrations/2026_10_26_140000_create_store_notifications_table.php`
-- `resources/js/components/NotificationBell.jsx`
-- `resources/js/components/NotificationBell.css`
-- `tests/Feature/StoreNotificationTest.php`
+- `app/Http/Controllers/Api/ProductAdvisorController.php`
+- `app/Services/ProductAdvisor.php`
+- `config/product_advisor.php`
+- `resources/js/components/ProductAdvisor.jsx`
+- `resources/js/components/ProductAdvisor.css`
+- `tests/Feature/ProductAdvisorTest.php`
 
-### File sửa
+### File đã sửa so với bản thông báo
 
-- `app/Http/Controllers/Api/AdminController.php`
-- `app/Http/Controllers/Api/ReturnRequestController.php`
-- `app/Http/Controllers/Api/WarrantyManagementController.php`
+- `.env.example`
 - `resources/js/app.jsx`
-- `resources/js/components/Navbar.jsx`
-- `resources/js/components/MyOrdersModal.jsx`
-- `resources/js/components/WarrantyModal.jsx`
 - `resources/js/services/api.js`
 - `routes/api.php`
-- `tests/Support/AccountTestCase.php`
 - `HUONG_DAN_CHAY.md`
 - `UPDATE.md`
 
-## Áp dụng
+## Cấu hình chạy trên máy người dùng
 
-Giải nén update-only vào dự án bản sổ địa chỉ, giữ đúng đường dẫn, giữ nguyên .env và database. Nếu code nhóm đã sửa cùng file, so sánh trước khi ghi đè.
+Giữ nguyên database, Gmail và APP_KEY. Trong .env thật (không upload lên GitHub):
+
+```dotenv
+AI_ADVISOR_ENABLED=true
+GEMINI_API_KEY="key_gemini_cua_ban"
+GEMINI_MODEL=gemini-3.5-flash-lite
+AI_ADVISOR_DAILY_CALL_LIMIT=80
+```
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_notifications_table.php
 php artisan optimize:clear
 ```
 
-Sau đó khởi động lại PHP và Vite hoặc build lại frontend. Hướng dẫn cài mới và cách test hai trình duyệt: HUONG_DAN_CHAY.md.
+Khởi động lại PHP và Vite/build giao diện. Không cần migration mới cho phần AI. Hướng dẫn từ đầu có trong HUONG_DAN_CHAY.md. Key chỉ đặt ở backend, không có biến VITE_GEMINI_API_KEY.
 
-## Đưa lên GitHub
+## Cách đưa lên GitHub
 
-Giải nén gói update-only, vào gốc repository → Add file → Upload files, đưa nội dung bên trong lên, giữ đúng đường dẫn. Không upload nguyên ZIP, .env, vendor/, node_modules/, build, cache hoặc log.
+1. Giải nén electronics-store-gemini-github-update.zip.
+2. Mở nhánh muốn cập nhật ở thư mục gốc repository → Add file → Upload files.
+3. Kéo nội dung bên trong lên, giữ đúng app/, config/, resources/, routes/, tests/ và các file ở gốc. Không kéo cả thư mục bao bên ngoài hay upload nguyên ZIP.
+4. Kiểm tra danh sách đúng 12 file. File .env.example chỉ là mẫu không có key; tuyệt đối không đưa .env thật lên.
+5. Commit với nội dung dưới đây.
 
-Commit:
-
-```text
-feat: thêm thông báo cho user khi admin cập nhật đơn và hồ sơ
-```
-
-Mô tả:
+### Tiêu đề commit
 
 ```text
-- Thêm chuông và số thông báo chưa đọc cho từng tài khoản.
-- Gửi thông báo khi admin cập nhật đơn, đổi trả/hoàn tiền và bảo hành.
-- Mở đúng đơn hoặc thiết bị từ thông báo; đánh dấu từng mục/tất cả đã đọc.
-- Bổ sung migration, kiểm thử quyền truy cập và hướng dẫn chạy.
+feat: thêm trợ lý chọn sản phẩm bằng Gemini Flash-Lite
 ```
 
-## Kiểm thử
+### Mô tả commit
 
-- 104 bài kiểm thử backend, 846 assertions: đạt trên SQLite tách biệt, không dùng database thật của bạn.
-- 7 nhóm kiểm thử React/jsdom: danh sách trống, polling, số chưa đọc, đánh dấu, lỗi/thử lại, phân trang, phản hồi tài khoản cũ, tạm dừng tab ẩn, mở đúng đơn/bảo hành và hiển thị chuông theo đăng nhập: đạt.
-- Build giao diện: đạt, còn cảnh báo Tailwind/kích thước bundle có sẵn.
-- Chưa kiểm thử trên MySQL thực tế ở máy bạn. Cấu hình Gmail không thay đổi.
+```text
+- Tư vấn theo nhu cầu, ngân sách và sản phẩm còn hàng trong database.
+- Dùng Gemini Flash-Lite, hỗ trợ xem chi tiết và thêm vào giỏ.
+- Tối ưu một lần gọi API, cache 90 giây và xử lý timeout.
+- Kiểm tra id, giá, tồn kho và thông số trước khi hiển thị.
+- Bổ sung cấu hình mẫu, kiểm thử và hướng dẫn chạy.
+```
+
+## Kiểm tra
+
+- 131 bài backend, 958 assertions: đạt; phần request Gemini dùng HTTP mock.
+- 8 nhóm React/jsdom và build giao diện: đạt; còn cảnh báo Tailwind/bundle có sẵn.
+- Người dùng đã kiểm tra yêu cầu sinh JSON nhỏ với Flash-Lite thành công, HTTP 200/STOP, 1,263 giây. Đây không phải benchmark tư vấn đầy đủ; không cam kết mọi lượt có cùng độ trễ.
+
+Không đóng gói .env, key thật, vendor, node_modules, build, log hoặc các script chẩn đoán cục bộ. Không có thao tác upload/commit nào được thực hiện tự động.

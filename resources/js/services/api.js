@@ -134,3 +134,6 @@ export const getNotificationsApi = (page = 1) => api.get('/notifications', { par
 export const readNotificationApi = id => api.put('/notifications/'+id+'/read');
 export const readAllNotificationsApi = through_id => api.put('/notifications/read-all', { through_id });
 export const getMyWarrantyApi = id => api.get('/warranties/my/'+id);
+
+export const getAdvisorOptionsApi = (signal) => api.get('/advisor/options', { signal });
+export const askProductAdvisorApi = (data, signal) => api.post('/advisor/chat', data, { signal, timeout: 27000 });

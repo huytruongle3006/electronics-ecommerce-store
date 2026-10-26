@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 import Navbar from './components/Navbar';
+import ProductAdvisor from './components/ProductAdvisor';
 import useStoreCart from './hooks/useStoreCart';
 import CartSyncNotice from './components/CartSyncNotice';
 import WishlistModal from './components/WishlistModal';
@@ -296,6 +297,8 @@ function App() {
                     setIsAuthOpen(true);
                 }}
             />}
+            <ProductAdvisor key={currentUser?.id || 'guest'} cartBusy={cart.busy}
+                onViewProduct={id => setSelectedProductId(id)} onAddToCart={addToCart} />
             {/* Drawer Giỏ hàng */}
             <CartDrawer
                 isOpen={isCartOpen}

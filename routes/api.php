@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\AdminController;
 | 1. PUBLIC ROUTES (Không cần đăng nhập)
 |--------------------------------------------------------------------------
 */
+Route::get('/advisor/options', [\App\Http\Controllers\Api\ProductAdvisorController::class, 'options'])->middleware('throttle:30,1');
+Route::post('/advisor/chat', [\App\Http\Controllers\Api\ProductAdvisorController::class, 'chat'])->middleware('throttle:5,1');
 // Xác thực
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
