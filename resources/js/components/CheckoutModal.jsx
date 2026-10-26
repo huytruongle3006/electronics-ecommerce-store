@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, CreditCard, Truck, ShieldCheck, MapPin, Phone, User, Tag } from 'lucide-react';
+import { ShippingAddressPicker } from './AddressBook';
 import { checkoutApi } from '../services/api';
 
 export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount, user, onOrderSuccess }) {
-  if (!isOpen) return null;
 
   const [formData, setFormData] = useState({
     recipient_name: user?.full_name || '',
@@ -14,6 +14,8 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
     note: '',
   });
 
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [addressBusy, setAddressBusy] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [orderSuccessData, setOrderSuccessData] = useState(null);
@@ -25,7 +27,8 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.recipient_name || !formData.recipient_phone || !formData.shipping_address) {
+    if (loading || addressBusy) return;
+    if (!selectedAddress && (!formData.recipient_name || !formData.recipient_phone || !formData.shipping_address)) {
       setError('Vui lòng điền đầy đủ thông tin giao hàng!');
       return;
     }
@@ -34,7 +37,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
     setError('');
 
     try {
-      const res = await checkoutApi(formData);
+      const res = await checkoutApi(selectedAddress ? { payment_method: formData.payment_method, voucher_code: formData.voucher_code, note: formData.note, address_id: selectedAddress.id } : formData);
       if (res.data.success) {
         setOrderSuccessData(res.data.data);
         onOrderSuccess();
@@ -99,12 +102,15 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
                 </div>
               )}
 
+              <ShippingAddressPicker disabled={loading} onBusyChange={setAddressBusy} onSelect={setSelectedAddress} />
               {/* Thông tin người nhận */}
               <div>
                 <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   1. Thông tin giao hàng
                 </span>
                 
+                {selectedAddress && <p style={{ color: '#2563eb', fontSize: 13 }}>Đang dùng địa chỉ đã lưu. Chọn “Nhập địa chỉ khác” ở trên để nhập thủ công.</p>}
+                <fieldset disabled={!!selectedAddress || loading} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Họ tên người nhận *</label>
@@ -113,7 +119,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
                       name="recipient_name"
                       required
                       placeholder="Nguyễn Văn A"
-                      value={formData.recipient_name}
+                      maxLength={100} value={selectedAddress?.recipient_name ?? formData.recipient_name}
                       onChange={handleChange}
                       style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', outline: 'none' }}
                     />
@@ -125,7 +131,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
                       name="recipient_phone"
                       required
                       placeholder="0912345678"
-                      value={formData.recipient_phone}
+                      maxLength={20} value={selectedAddress?.recipient_phone ?? formData.recipient_phone}
                       onChange={handleChange}
                       style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', outline: 'none' }}
                     />
@@ -139,12 +145,13 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
                     name="shipping_address"
                     required
                     placeholder="Số nhà, đường, phường/xã, quận/huyện..."
-                    value={formData.shipping_address}
+                    maxLength={1000} value={selectedAddress?.shipping_address ?? formData.shipping_address}
                     onChange={handleChange}
                     style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', outline: 'none' }}
                   />
                 </div>
 
+                </fieldset>
                 <div style={{ marginTop: '10px' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Ghi chú giao hàng (nếu có)</label>
                   <textarea 
@@ -235,7 +242,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
 
               <button 
                 type="submit"
-                disabled={loading}
+                disabled={loading || addressBusy}
                 style={{
                   padding: '13px',
                   backgroundColor: '#2563eb',

@@ -123,3 +123,9 @@ export const updateReviewApi = (id, data) => api.put('/reviews/'+id, data);
 export const deleteReviewApi = (id) => api.delete('/reviews/'+id);
 
 export const mergeGuestCartApi = (data) => api.post('/cart/merge', data);
+
+export const getAddressesApi = () => api.get('/addresses');
+export const createAddressApi = data => api.post('/addresses', data);
+export const updateAddressApi = (id, data) => api.put('/addresses/'+id, data);
+export const deleteAddressApi = id => api.delete('/addresses/'+id);
+export const defaultAddressApi = id => api.put('/addresses/'+id+'/default');

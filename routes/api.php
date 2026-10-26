@@ -53,6 +53,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/wishlist/{productId}', [\App\Http\Controllers\Api\WishlistController::class, 'destroy'])->whereNumber('productId');
 
     Route::post('/cart/merge', [\App\Http\Controllers\Api\CartMergeController::class, 'merge']);
+    // Sổ địa chỉ của tài khoản hiện tại
+    Route::get('/addresses', [\App\Http\Controllers\Api\ShippingAddressController::class, 'index']);
+    Route::post('/addresses', [\App\Http\Controllers\Api\ShippingAddressController::class, 'store']);
+    Route::put('/addresses/{id}', [\App\Http\Controllers\Api\ShippingAddressController::class, 'update'])->whereNumber('id');
+    Route::put('/addresses/{id}/default', [\App\Http\Controllers\Api\ShippingAddressController::class, 'makeDefault'])->whereNumber('id');
+    Route::delete('/addresses/{id}', [\App\Http\Controllers\Api\ShippingAddressController::class, 'destroy'])->whereNumber('id');
     // Giỏ hàng
     Route::get('/cart', [CartController::class, 'index']);
     Route::post('/cart/add', [CartController::class, 'addToCart']);

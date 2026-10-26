@@ -20,9 +20,10 @@ class OrderController extends Controller
     public function checkout(Request $request)
 {
     $request->validate([
-        'recipient_name'  => 'required|string|max:100',
-        'recipient_phone' => 'required|string|max:20',
-        'shipping_address'=> 'required|string',
+        'address_id' => 'nullable|integer|min:1',
+        'recipient_name'  => 'required_without:address_id|nullable|string|max:100',
+        'recipient_phone' => 'required_without:address_id|nullable|string|max:20',
+        'shipping_address'=> 'required_without:address_id|nullable|string|max:1000',
         'payment_method'  => 'required|in:cod,bank_transfer,vnpay,momo',
         'voucher_code'    => 'nullable|string',
         'note'            => 'nullable|string',
@@ -41,6 +42,14 @@ class OrderController extends Controller
     $cartItems = $cart->items()->with('product')->get();
 
     return DB::transaction(function () use ($request, $user, $cart, $cartItems) {
+        // Copy recipient fields into the order, never store a live address reference.
+        $shipping = $request->only(['recipient_name', 'recipient_phone', 'shipping_address']);
+        if ($request->filled('address_id')) {
+            $saved = \App\Models\ShippingAddress::where('user_id', $user->id)
+                ->where('id', $request->integer('address_id'))->lockForUpdate()->first();
+            abort_unless($saved, 422, 'Địa chỉ đã bị xóa hoặc không thuộc tài khoản của bạn. Vui lòng chọn lại.');
+            $shipping = $saved->only(['recipient_name', 'recipient_phone', 'shipping_address']);
+        }
         $totalAmount = 0;
 
         // 1. Kiểm tra tồn kho từng sản phẩm
@@ -90,9 +99,9 @@ class OrderController extends Controller
             'maDH'             => 'DH' . date('YmdHis') . rand(10, 99),
             'user_id'          => $user->id,
             'voucher_id'       => $voucherId,
-            'recipient_name'   => $request->recipient_name,
-            'recipient_phone'  => $request->recipient_phone,
-            'shipping_address' => $request->shipping_address,
+            'recipient_name'   => $shipping['recipient_name'],
+            'recipient_phone'  => $shipping['recipient_phone'],
+            'shipping_address' => $shipping['shipping_address'],
             'total_amount'     => $totalAmount,
             'discount_amount'  => $discountAmount,
             'final_amount'     => $finalAmount,

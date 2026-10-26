@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import AddressBook from './AddressBook';
 import { X } from 'lucide-react';
 import { getProfileApi, updateProfileApi, changePasswordApi } from '../services/api';
 
@@ -94,7 +95,7 @@ export default function AccountModal({ user, onClose, onUpdated, onPasswordChang
     const onKeyDown = event => {
         if (event.key === 'Escape' && !busy) onClose();
         if (event.key !== 'Tab') return;
-        const elements = [...dialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled)')];
+        const elements = [...dialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled)')];
         const first = elements[0], last = elements[elements.length - 1];
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -108,8 +109,8 @@ export default function AccountModal({ user, onClose, onUpdated, onPasswordChang
                     <h2 id="account-title" style={{ margin: 0, fontSize: 22 }}>Tài khoản của tôi</h2>
                     <button ref={closeRef} type="button" onClick={onClose} disabled={busy} aria-label="Đóng tài khoản" style={{ background: 'none', border: 0, cursor: 'pointer' }}><X /></button>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                    {[['profile', 'Thông tin cá nhân'], ['password', 'Đổi mật khẩu']].map(([key, label]) => (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+                    {[['profile', 'Thông tin cá nhân'], ['addresses', 'Sổ địa chỉ'], ['password', 'Đổi mật khẩu']].map(([key, label]) => (
                         <button key={key} type="button" disabled={busy} aria-pressed={tab === key}
                             onClick={() => { setTab(key); setPasswords(emptyPasswords); clearMessages(); }}
                             style={{ ...buttonStyle, background: tab === key ? '#2563eb' : '#f1f5f9', color: tab === key ? '#fff' : '#334155' }}>{label}</button>
@@ -118,7 +119,7 @@ export default function AccountModal({ user, onClose, onUpdated, onPasswordChang
                 {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
                 {message && <p role="status" style={{ color: '#15803d' }}>{message}</p>}
                 {loading ? <p role="status">Đang tải thông tin...</p> : profile && (
-                    tab === 'profile' ? <form onSubmit={saveProfile}>
+                    tab === 'addresses' ? <AddressBook onSessionExpired={onSessionExpired} onBusyChange={setBusy} /> : tab === 'profile' ? <form onSubmit={saveProfile}>
                         <fieldset disabled={busy} style={{ border: 0, padding: 0, margin: 0, display: 'grid', gap: 16, minWidth: 0 }}>
                             {field('full_name', 'Họ và tên', 'text', { required: true, maxLength: 100, autoComplete: 'name' })}
                             <label style={{ display: 'grid', gap: 6 }}>Email đăng nhập
@@ -126,7 +127,7 @@ export default function AccountModal({ user, onClose, onUpdated, onPasswordChang
                                 <small style={{ color: '#64748b' }}>Email đăng nhập được giữ cố định.</small>
                             </label>
                             {field('phone', 'Số điện thoại', 'tel', { maxLength: 20, autoComplete: 'tel', placeholder: 'Ví dụ: 0912345678' })}
-                            <label style={{ display: 'grid', gap: 6 }}>Địa chỉ nhận hàng
+                            <label style={{ display: 'grid', gap: 6 }}>Địa chỉ hồ sơ (dùng khi chưa chọn địa chỉ đã lưu)
                                 <textarea name="address" value={form.address} maxLength={1000} rows={3} autoComplete="street-address"
                                     onChange={event => { setForm(prev => ({ ...prev, address: event.target.value })); setMessage(''); }}
                                     style={{ ...inputStyle, resize: 'vertical' }} aria-invalid={!!errors.address} />

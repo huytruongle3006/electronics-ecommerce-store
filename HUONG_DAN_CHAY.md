@@ -1,8 +1,36 @@
 # CÁCH CHẠY TECHSTORE
 
+## Nếu bạn đang chạy bản cũ và chỉ muốn thêm sổ địa chỉ
+
+1. Giải nén gói `electronics-store-addresses-fixed-update-only.zip` và chép các file/thư mục bên trong vào đúng thư mục dự án có `artisan`. Giữ đúng đường dẫn và cho phép thay thế file cũ. Gói cập nhật dành cho bản đã có menu mới, giỏ khách, Gmail, đánh giá, đổi trả, bảo hành và kho như bạn đang dùng. Nếu code của nhóm đã sửa thêm các file đó, so sánh trước khi chép đè.
+2. Giữ nguyên `.env`, APP_KEY và database đang dùng. Không nhập lại SQL và không tạo lại khóa ứng dụng.
+3. Ở terminal VS Code tại thư mục có `artisan`, chạy:
+
+```powershell
+php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping_addresses_table.php
+php artisan optimize:clear
+```
+
+4. Khởi động lại PHP nếu đang chạy. Mở hai terminal: `php artisan serve` và `npm.cmd run dev`. Hoặc chạy `npm.cmd run build` nếu dùng giao diện đã build.
+5. Mở http://localhost:8000 và nhấn Ctrl+F5. Vào nút tài khoản → Tài khoản của tôi → **Sổ địa chỉ**.
+
+Không cần thay thông tin kết nối database hay Gmail. Migration mới chỉ tạo bảng `shipping_addresses`.
+
+### Cách sử dụng và kiểm tra sổ địa chỉ
+
+- Thêm địa chỉ với tên gợi nhớ, tên người nhận, số điện thoại, địa chỉ đầy đủ. Địa chỉ đầu tiên tự làm mặc định; mỗi tài khoản lưu tối đa 20 địa chỉ.
+- Thêm địa chỉ thứ hai rồi chọn **Đặt mặc định**. Mỗi tài khoản luôn chỉ có một mặc định nếu còn địa chỉ.
+- Sửa thông tin, thử hủy chỉnh sửa; thử xóa rồi chọn Giữ địa chỉ hoặc Xác nhận xóa. Xóa mặc định sẽ chuyển sang địa chỉ còn lại được lưu sớm nhất.
+- Thêm sản phẩm vào giỏ và thanh toán: địa chỉ mặc định được điền sẵn, có thể chọn địa chỉ khác hoặc chọn **Nhập địa chỉ khác (không lưu)**. Có thể quản lý địa chỉ ngay trong màn hình thanh toán.
+- Khi đang sửa địa chỉ, hoàn tất lưu hoặc hủy chỉnh sửa trước khi đặt hàng.
+- Đặt một đơn COD bằng địa chỉ đã lưu, sau đó sửa hoặc xóa địa chỉ. Mở lại đơn: tên, số điện thoại và địa chỉ nhận hàng trên đơn phải giữ nguyên.
+- Đăng nhập tài khoản khác để kiểm tra sổ địa chỉ riêng biệt. Không có thay đổi tự động với trường địa chỉ hồ sơ cũ; trường đó chỉ là dữ liệu gợi ý khi nhập địa chỉ thủ công.
+
+## Cài mới từ đầu
+
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-clean.zip` vào một thư mục mới.
+Giải nén `electronics-store-addresses-fixed-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -88,6 +116,7 @@ php artisan migrate --path=database/migrations/2026_10_19_120000_create_return_r
 php artisan migrate --path=database/migrations/2026_10_19_150000_create_warranty_service_tables.php
 php artisan migrate --path=database/migrations/2026_10_19_180000_create_wishlist_items_table.php
 php artisan migrate --path=database/migrations/2026_10_19_230000_create_guest_cart_merges_table.php
+php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping_addresses_table.php
 php artisan optimize:clear
 ```
 
@@ -187,3 +216,8 @@ Nếu muốn dùng bản build thay vì giữ Vite chạy, thực hiện `npm.cm
 - **MissingAppKeyException**: nếu cài mới và APP_KEY đang trống, chạy `php artisan key:generate`, sau đó `php artisan optimize:clear` và khởi động lại PHP.
 - **Access denied / Unknown database / Connection refused**: kiểm tra MySQL Server đang chạy, tên database, tên đăng nhập, mật khẩu và cổng trong `.env`, rồi chạy `php artisan optimize:clear`.
 - **Không tải được giao diện / Vite manifest not found**: chạy `npm.cmd ci`, rồi `npm.cmd run dev` ở terminal thứ hai.
+
+
+## Ban sua loi chon dia chi vua luu
+
+Luu dia chi ngay tai checkout se tu chon dia chi do va khoa ba o thong tin giao hang ben duoi. Chon Nhap dia chi khac de nhap thu cong. Ban nay da gom ban sua loi, khong can chep them goi fix rieng.

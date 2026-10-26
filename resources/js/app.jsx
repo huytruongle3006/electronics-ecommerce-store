@@ -259,7 +259,7 @@ function App() {
                 )}
             </main>
 
-            {isAccountOpen && currentUser && <AccountModal
+            {isAccountOpen && currentUser && <AccountModal key={currentUser.id}
                 user={currentUser}
                 onClose={() => setIsAccountOpen(false)}
                 onUpdated={(updated) => {
@@ -331,7 +331,7 @@ function App() {
             />}
 
             {/* Modal Thanh toán Checkout */}
-            {isCheckoutOpen && <CheckoutModal
+            {isCheckoutOpen && currentUser && <CheckoutModal key={currentUser.id}
                 isOpen={isCheckoutOpen}
                 onClose={() => setIsCheckoutOpen(false)}
                 cartItems={cartItems}
