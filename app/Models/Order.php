@@ -23,12 +23,17 @@ class Order extends Model
         'final_amount',
         'note',
         'status',
+        'carrier_name', 'tracking_number', 'estimated_delivery_date',
+        'dispatched_at', 'delivered_at', 'receipt_confirmed_at', 'delivery_version',
     ];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'final_amount' => 'decimal:2',
+        'estimated_delivery_date' => 'date:Y-m-d',
+        'dispatched_at' => 'datetime', 'delivered_at' => 'datetime', 'receipt_confirmed_at' => 'datetime',
+        'delivery_version' => 'integer',
     ];
 
     public function user()
@@ -43,6 +48,7 @@ class Order extends Model
 
     public function completedAt()
     {
+        if ($this->delivered_at) return $this->delivered_at;
         $date = $this->histories()->where('status_changed', 'completed')
             ->where(fn ($history) => $history->whereNull('note')->orWhere('note', 'not like', 'Xác nhận đã thu COD.%'))
             ->oldest('created_at')->value('created_at') ?? $this->updated_at;

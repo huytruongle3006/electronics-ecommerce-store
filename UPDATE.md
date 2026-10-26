@@ -1,67 +1,66 @@
-# Cập nhật mã giảm giá cho khách hàng
+# Cập nhật quản lý giao hàng và thông báo
 
-So với bản mua lại đơn cũ + đã xem gần đây đã sửa lỗi React key.
+So với bản mã giảm giá khách hàng mới nhất. Giữ toàn bộ tính năng trước đó.
 
 ## Chức năng
 
-- Menu tài khoản xem/sao chép các mã đang phát hành từ database, hiển thị điều kiện và phân trang.
-- Checkout chọn hoặc nhập mã, áp dụng, bỏ mã và xem tiền giảm/tổng thanh toán theo giỏ trên server.
-- Kiểm tra hiệu lực, đơn tối thiểu, số lượt chung và giới hạn mỗi tài khoản. Mỗi đơn một mã, không giữ lượt khi xem trước.
-- Checkout khóa user/cart/product/voucher, tính tiền theo đơn vị nhỏ nhất; không tin tiền giảm hoặc tạm tính từ client. Bản xem trước có chữ ký gắn user, giỏ và điều kiện mã; dữ liệu đổi phải áp dụng lại.
-- Tạo đơn/thanh toán/chi tiết/trừ kho/trừ lượt/xóa giỏ cùng transaction; lỗi lưu hoàn tác toàn bộ. Thanh toán giữ luồng hiện có của dự án.
-- Hủy đơn qua luồng hiện có hoàn lượt chung đúng một lần; số đơn chưa hủy xác định lượt cá nhân, bao gồm đơn từ các bản cũ. Đổi trả/hoàn tiền không tự hoàn lượt.
-- Admin quản lý giới hạn mỗi tài khoản, ngày/giờ hết hạn, chuẩn hóa mã và không xóa mã đã có đơn sử dụng.
-- Giữ bản sửa lỗi lặp mục đã xem gần đây và toàn bộ chức năng trước đó.
+- Admin nhập/sửa đơn vị vận chuyển, mã vận đơn, ngày giao dự kiến cho đơn đã xác nhận/đang giao.
+- Khách xem thông tin trong chi tiết đơn; bấm Đã nhận hàng qua bước xác nhận khi đơn đang giao.
+- Ghi thời điểm bắt đầu giao, giao thành công và khách xác nhận riêng biệt; admin hoàn tất không giả lập khách đã xác nhận.
+- Thông báo riêng cho chủ đơn khi thêm/sửa vận chuyển, bắt đầu giao, hoàn tất và xác nhận nhận hàng. Bấm thông báo mở đúng đơn.
+- Khóa dòng đơn trong transaction, kiểm tra phiên bản sửa vận chuyển, retry không tạo trùng lịch sử/thông báo. Lỗi thông báo hoàn tác thay đổi đơn.
+- Không đổi thanh toán/COD, không trừ kho lần nữa, không thay lượt voucher. delivered_at là mốc hoàn tất nếu đã có; đơn cũ giữ fallback lịch sử.
+- Tương thích đơn cũ chưa có vận đơn/thời gian. Thông tin do admin nhập, chưa tích hợp API hãng vận chuyển, email hoặc push.
 
-## File mới (5)
+## File mới (4)
 
-- app/Http/Controllers/Api/CustomerVoucherController.php
-- app/Services/CustomerVoucher.php
-- database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
-- resources/js/components/CustomerVouchers.jsx
-- tests/Feature/CustomerVoucherTest.php
+- app/Http/Controllers/Api/OrderDeliveryController.php
+- database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
+- resources/js/components/OrderDelivery.jsx
+- tests/Feature/OrderDeliveryTest.php
 
 ## File sửa (11)
 
 - app/Http/Controllers/Api/AdminController.php
-- app/Http/Controllers/Api/OrderController.php
-- app/Models/Voucher.php
-- resources/js/app.jsx
-- resources/js/components/CheckoutModal.jsx
-- resources/js/components/Navbar.jsx
-- resources/js/components/VoucherManagement.jsx
+- app/Models/Order.php
+- app/Services/StoreNotifier.php
+- resources/js/components/MyOrdersModal.jsx
+- resources/js/components/OrderManagement.jsx
 - resources/js/services/api.js
 - routes/api.php
+- tests/Feature/WarrantyWorkflowTest.php
+- tests/Support/OrderTestCase.php
 - HUONG_DAN_CHAY.md
 - UPDATE.md
 
-## Migration
+tests/Support/OrderTestCase.php bổ sung schema giao hàng cho các kiểm thử; WarrantyWorkflowTest.php dùng đúng ngày theo múi giờ bảo hành khi kiểm tra hết hạn cuối ngày.
+
+## Chạy sau khi cập nhật
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
+php artisan migrate --path=database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
 php artisan optimize:clear
 ```
 
-Giữ .env, database và APP_KEY. Migration thêm per_user_limit mặc định 1 cho mã cũ/mới; các đơn cũ chưa hủy vẫn tính lượt. Admin điều chỉnh nếu cần. Khởi động lại Vite hoặc build rồi tải lại toàn bộ trang. Không nhập lại SQL/migrate:fresh.
+Giữ .env, APP_KEY và database. Khởi động lại Vite/PHP hoặc build rồi tải lại toàn bộ trang. Không nhập lại SQL/migrate:fresh. Cột mới nullable, không bịa thời điểm giao của các đơn cũ.
 
-## Validation
+## Kiểm thử
 
-156 bài backend / 1132 assertions đạt trên SQLite riêng; 7 nhóm frontend React/jsdom mới đạt; production build đạt. Chưa test MySQL/browser thực tế của người dùng. Cảnh báo Tailwind/bundle cũ còn tồn tại.
+167 backend tests / 1225 assertions, 6 nhóm React/jsdom mới và production build đạt. Backend chạy SQLite riêng, chưa kiểm tra MySQL/browser máy bạn. Cảnh báo Tailwind/bundle cũ vẫn có.
 
 ## Commit GitHub
 
 Tiêu đề:
 
 ```text
-feat: thêm mã giảm giá cho khách hàng và áp dụng tại checkout
+feat: thêm quản lý giao hàng và thông báo cho khách
 ```
 
 Mô tả:
 
 ```text
-- Xem danh sách mã và điều kiện trong menu tài khoản.
-- Áp dụng/bỏ mã, hiển thị tiền giảm và tổng thanh toán.
-- Kiểm tra hạn, lượt dùng và giới hạn mỗi tài khoản trên server.
-- Hoàn lượt khi hủy đơn, giữ lịch sử mã đã được sử dụng.
-- Bổ sung migration, kiểm thử và hướng dẫn chạy.
+- Admin cập nhật đơn vị vận chuyển, mã vận đơn và ngày giao dự kiến.
+- User xem thông tin và xác nhận đã nhận hàng khi đơn đang giao.
+- Lưu thời gian giao thành công, gửi thông báo trong website tới chủ đơn.
+- Chống cập nhật trùng/xung đột, bổ sung migration và kiểm thử.
 ```

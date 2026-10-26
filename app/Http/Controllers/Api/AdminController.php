@@ -81,7 +81,10 @@ class AdminController extends Controller
             if ($newStatus === 'cancelled') {
                 app(\App\Services\OrderCancellation::class)->cancelLocked($order, $request->user(), 'Quản trị viên hủy đơn.');
             } else {
-                $order->update(['status' => $newStatus]);
+                $changes = ['status' => $newStatus];
+                if ($newStatus === 'shipping' && !$order->dispatched_at) $changes['dispatched_at'] = now();
+                if ($newStatus === 'completed' && !$order->delivered_at) $changes['delivered_at'] = now();
+                $order->update($changes);
                 OrderHistory::create([
                     'order_id' => $order->id,
                     'status_changed' => $newStatus,

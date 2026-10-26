@@ -22,7 +22,22 @@ class StoreNotifier
     {
         $labels = ['confirmed' => 'đã được xác nhận', 'shipping' => 'đang được giao', 'completed' => 'đã hoàn tất', 'cancelled' => 'đã bị hủy'];
         self::send($order->user_id, "order:{$order->id}:{$order->status}", 'Cập nhật đơn hàng',
-            "Đơn {$order->maDH} ".($labels[$order->status] ?? 'đã được cập nhật').'.', 'order', $order->id);
+            "Đơn {$order->maDH} ".($labels[$order->status] ?? 'đã được cập nhật').'.'
+                .($order->status === 'shipping' ? self::deliveryText($order) : '')
+                .($order->status === 'completed' && $order->delivered_at ? ' Ghi nhận giao thành công lúc '.$order->delivered_at->copy()->timezone('Asia/Ho_Chi_Minh')->format('d/m/Y H:i').' (giờ Việt Nam).' : ''), 'order', $order->id);
+    }
+
+    private static function deliveryText(Order $order): string
+    {
+        return ($order->carrier_name ? ' Đơn vị: '.$order->carrier_name.'.' : '')
+            .($order->tracking_number ? ' Mã vận đơn: '.$order->tracking_number.'.' : '')
+            .($order->estimated_delivery_date ? ' Dự kiến giao: '.$order->estimated_delivery_date->format('d/m/Y').'.' : '');
+    }
+
+    public static function delivery(Order $order): void
+    {
+        self::send($order->user_id, "delivery:{$order->id}:{$order->delivery_version}", 'Cập nhật vận chuyển',
+            "Thông tin giao hàng đơn {$order->maDH} đã được cập nhật.".self::deliveryText($order), 'order', $order->id);
     }
 
     public static function returned(ReturnRequest $return, Order $order): void

@@ -80,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/checkout', [OrderController::class, 'checkout']);
     Route::get('/orders/my-orders', [OrderController::class, 'myOrders']);
     Route::post('/orders/{id}/cancel', [OrderCancellationController::class, 'cancel'])->middleware('throttle:10,1');
+    Route::post('/orders/{id}/received', [\App\Http\Controllers\Api\OrderDeliveryController::class, 'receive'])->whereNumber('id')->middleware('throttle:10,1');
     Route::get('/orders/{id}/return-request', [\App\Http\Controllers\Api\ReturnRequestController::class, 'forOrder']);
     Route::post('/orders/{id}/return-request', [\App\Http\Controllers\Api\ReturnRequestController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/orders/{id}', [OrderController::class, 'show']);
@@ -124,6 +125,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Quản lý Đơn hàng
         Route::get('/orders', [AdminController::class, 'getOrders']);
         Route::put('/orders/{id}/status', [AdminController::class, 'updateOrderStatus']);
+        Route::put('/orders/{id}/delivery', [\App\Http\Controllers\Api\OrderDeliveryController::class, 'update'])->whereNumber('id')->middleware('throttle:30,1');
+        Route::get('/orders/{id}/delivery', [\App\Http\Controllers\Api\OrderDeliveryController::class, 'show'])->whereNumber('id');
 
         // Quản lý Sản phẩm (Admin)
         Route::get('/products', [AdminController::class, 'getAdminProducts']);

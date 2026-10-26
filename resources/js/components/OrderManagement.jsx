@@ -1,5 +1,6 @@
 import { canChangeOrderStatus, cancellationNote } from '../utils/orderStatus';
 import ConfirmCodPayment from './ConfirmCodPayment';
+import {AdminDeliveryEditor} from './OrderDelivery';
 import React, { useState, useEffect } from 'react';
 import { Search, Eye, X, Package, CheckCircle, Clock, Truck, Check, AlertCircle } from 'lucide-react';
 import { getAdminOrdersApi, updateOrderStatusApi } from '../services/api';
@@ -19,6 +20,7 @@ export default function OrderManagement() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
 
   const fetchOrders = async (status = statusFilter, query = search, page = 1) => {
     setLoading(true);
@@ -249,7 +251,7 @@ export default function OrderManagement() {
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Chi Tiết Đơn Hàng: {selectedOrder.maDH}</h3>
                 <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Ngày đặt: {new Date(selectedOrder.created_at).toLocaleString('vi-VN')}</span>
               </div>
-              <button onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <button disabled={deliveryBusy} onClick={() => setSelectedOrder(null)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
@@ -263,6 +265,8 @@ export default function OrderManagement() {
                 {selectedOrder.note && <div><strong>Ghi chú:</strong> {selectedOrder.note}</div>}
               </div>
 
+              <AdminDeliveryEditor key={`delivery:${selectedOrder.id}:${selectedOrder.delivery_version||0}:${selectedOrder.status}`}
+                order={selectedOrder} onBusyChange={setDeliveryBusy} onUpdated={updated=>{setSelectedOrder(updated);setOrders(previous=>previous.map(row=>row.id===updated.id?updated:row));}} />
               {/* Danh sách sản phẩm trong đơn */}
               <div>
                 <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>Sản phẩm đã mua:</h4>

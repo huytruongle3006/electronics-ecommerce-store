@@ -37,6 +37,9 @@ export const removeCartItemApi = (item_id) => api.delete(`/cart/items/${item_id}
 export const getMyOrdersApi = () => api.get('/orders/my-orders');
 export const cancelOrderApi = (id, reason) => api.post(`/orders/${id}/cancel`, { reason });
 export const getOrderDetailApi = (id) => api.get(`/orders/${id}`);
+export const confirmOrderReceivedApi = (id) => api.post(`/orders/${id}/received`, {confirm_received:true}, {timeout:15000});
+export const getAdminDeliveryApi = (id) => api.get(`/admin/orders/${id}/delivery`, {timeout:12000});
+export const updateOrderDeliveryApi = (id, data) => api.put(`/admin/orders/${id}/delivery`, data, {timeout:15000});
 export const checkoutApi = (data) => api.post('/checkout', data);
 export const getCustomerVouchersApi = (page = 1, signal) => api.get('/vouchers', { params: {page}, signal, timeout: 12000 });
 export const previewVoucherApi = (code, signal) => api.post('/vouchers/preview', {code}, {signal, timeout: 12000});

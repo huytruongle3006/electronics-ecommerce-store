@@ -1,66 +1,69 @@
-# TECHSTORE — Mã giảm giá cho khách hàng
+# TECHSTORE — Quản lý giao hàng và thông báo cho khách
 
-## Cập nhật từ bản mua lại + đã xem đã sửa lỗi
+## Cập nhật từ bản mã giảm giá mới nhất
 
-1. Giải nén electronics-store-customer-vouchers-update-only.zip. Chép nội dung vào thư mục có artisan, giữ đúng đường dẫn và thay các file cũ. Gói cập nhật cần nền bản mua lại/đã xem gần đây đã sửa lỗi React key. Nếu nhóm đã sửa cùng file, đối chiếu trước khi chép.
-2. Giữ nguyên .env, APP_KEY, database MySQL, Gmail và Gemini. Không nhập lại SQL, không chạy migrate:fresh và không tạo lại khóa.
-3. Trong Terminal VS Code ở đúng thư mục có artisan, chạy từng lệnh:
+1. Giải nén electronics-store-delivery-update-only.zip, chép nội dung vào gốc dự án có artisan. Giữ đúng đường dẫn và thay file cũ. Gói này cần nền bản mã giảm giá cho khách hàng đã giao; nếu nhóm sửa cùng file hãy đối chiếu trước khi thay.
+2. Giữ nguyên .env, APP_KEY, database MySQL, Gmail và Gemini. Không nhập lại SQL hoặc migrate:fresh.
+3. Tại terminal VS Code trong thư mục có artisan, chạy từng lệnh:
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
+php artisan migrate --path=database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
 php artisan optimize:clear
 ```
 
-4. Dừng và mở lại php artisan serve nếu đang chạy. Chạy npm.cmd run dev ở terminal khác; nếu dùng giao diện build thì chạy npm.cmd run build. Đóng tab website cũ, mở lại http://localhost:8000 rồi Ctrl+F5.
+4. Dừng/mở lại php artisan serve nếu đang chạy. Chạy npm.cmd run dev ở terminal khác, hoặc npm.cmd run build nếu dùng giao diện build. Đóng tab cũ, mở lại http://localhost:8000 rồi Ctrl+F5.
 
-Migration chỉ bổ sung cột per_user_limit trong vouchers, mặc định 1 lượt/tài khoản cho cả mã cũ. Các đơn cũ chưa hủy đã dùng mã được tính vào giới hạn này. Admin có thể tăng giới hạn ở Quản lý mã giảm giá. Không cần cài thêm package hay cấu hình API.
+Migration chỉ bổ sung các cột vào orders: carrier_name, tracking_number, estimated_delivery_date, dispatched_at, delivered_at, receipt_confirmed_at và delivery_version. Đơn cũ không bị xóa và các thời điểm chưa biết vẫn để trống. Không cần package mới, API vận chuyển hoặc cấu hình email mới.
 
-## Cách dùng cho khách hàng
+## Admin sử dụng
 
-- Đăng nhập → mở menu tên tài khoản → Mã giảm giá. Danh sách lấy từ database thật, chỉ gồm mã đang bật, còn lượt toàn cửa hàng và chưa hết hạn. Có điều kiện, hạn, số lượt còn lại và giới hạn mỗi tài khoản; hỗ trợ phân trang và tải lại.
-- Có thể sao chép mã; nếu trình duyệt không cho sao chép tự động, chọn mã trên thẻ và copy thủ công.
-- Thêm sản phẩm vào giỏ → Thanh toán. Chọn Dùng mã trong danh sách hoặc nhập mã rồi Áp dụng mã. Hệ thống dùng giá/tồn kho giỏ tài khoản trên server để tính tiền giảm và tổng thanh toán; không dùng tạm tính do trình duyệt gửi.
-- Chỉ dùng một mã mỗi đơn. Có thể Bỏ mã để đặt hàng không dùng voucher. Nếu nhập mã nhưng chưa áp dụng, nút đặt hàng bị khóa để tránh hiểu nhầm đã được giảm.
-- Nếu giỏ, giá hoặc điều kiện mã thay đổi sau khi áp dụng, đặt hàng bị từ chối và cần áp dụng lại để xem tổng tiền mới. Nếu mã hết hạn/hết lượt/ngừng hoạt động, bỏ mã hoặc dùng mã khác. Xem trước không giữ lượt mã, không giữ kho.
-- Chỉ trừ lượt khi tạo đơn thành công. Đơn hủy theo luồng user/admin đang có được hoàn lượt toàn cửa hàng đúng một lần và không tính vào lượt của tài khoản. Nếu mã đã hết hạn hoặc bị tắt, việc hoàn lượt không làm mã tự có hiệu lực trở lại.
-- Đơn đã hoàn tất hoặc xử lý đổi trả/hoàn tiền vẫn tính lượt dùng; chỉ trạng thái cancelled hoàn lượt theo chính sách bản này. Phần đổi trả không được coi là hủy đơn.
-- Không có chức năng cộng dồn nhiều mã hoặc lưu ví mã cá nhân. Danh sách là các mã chung mà admin đang phát hành.
+1. Trang quản trị → Đơn hàng → xác nhận đơn đang chờ duyệt.
+2. Mở Chi tiết đơn. Ở Quản lý giao hàng, nhập đơn vị vận chuyển, mã vận đơn và ngày giao dự kiến.
+3. Bấm Lưu vận chuyển và thông báo. Khách nhận thông báo trong website kèm đơn vị, mã và ngày dự kiến. Lưu lại thông tin y hệt không tạo thêm thông báo/lịch sử.
+4. Khi thực sự bàn giao hàng, chuyển trạng thái ở danh sách đơn sang Đang giao. Hệ thống ghi thời điểm bắt đầu giao và gửi thông báo trạng thái kèm thông tin vận chuyển.
+5. Nếu cần sửa đơn vị/mã/ngày dự kiến trong lúc đang giao, mở lại chi tiết, sửa và lưu. Mỗi lần thay đổi thành công tạo một thông báo mới cho đúng chủ đơn.
+6. Ngày dự kiến mới phải từ hôm nay theo giờ Việt Nam. Mã tối đa 100 ký tự, chỉ chữ/số/dấu chấm/gạch ngang/gạch dưới/gạch chéo. Tên đơn vị tối đa 100 ký tự.
+7. Chỉ sửa thông tin vận chuyển của đơn confirmed hoặc shipping. Đơn cancelled/completed không được sửa. Nếu có người khác cập nhật đồng thời, hệ thống báo xung đột; bấm Tải lại thông tin vận chuyển rồi sửa trên bản mới.
+8. Admin vẫn có thể chuyển đơn shipping sang completed theo luồng cũ, ghi thời điểm hệ thống xác nhận giao thành công và gửi thông báo. Trường xác nhận của khách vẫn trống nếu khách chưa thực hiện xác nhận.
 
-## Cách tạo mã ở admin
+Luồng đổi trạng thái cũ vẫn hỗ trợ đơn chưa có thông tin vận chuyển để tương thích dữ liệu trước đây. Nên nhập thông tin trước khi chuyển Đang giao. Lưu vận đơn không tự đổi trạng thái hay tự tạo vận đơn bên hãng vận chuyển.
 
-Trang quản trị → Quản lý mã giảm giá → Tạo mã mới. Điền:
+## Khách hàng sử dụng
 
-- Mã gồm A–Z, số, dấu gạch dưới hoặc gạch ngang, tối đa 20 ký tự. Tự bỏ khoảng trắng đầu/cuối và chuyển chữ hoa.
-- Giảm từ 1–100%, tối đa 2 số thập phân.
-- Đơn tối thiểu, mức giảm tối đa. Giảm tối đa = 0 nghĩa là không giới hạn số tiền giảm; tiền giảm luôn không vượt tạm tính.
-- Số lượt dùng là số lượt còn lại toàn cửa hàng. Khi tạo mới cần ít nhất 1 lượt; sửa có thể về 0.
-- Số lượt tối đa mỗi tài khoản: 1–10000, mặc định 1.
-- Ngày/giờ hết hạn theo giờ trình duyệt máy admin; gửi về server dạng ISO có múi giờ. Bỏ trống nghĩa là không giới hạn thời gian.
-- Trạng thái Đang kích hoạt. Mã chưa đủ điều kiện sẽ giải thích cho khách ở checkout.
+- Menu tài khoản → Đơn hàng của tôi → mở chi tiết đơn.
+- Xem đơn vị vận chuyển, mã vận đơn, ngày giao dự kiến và các thời điểm đã ghi nhận. Ngày chỉ là dự kiến, thông tin do cửa hàng nhập; chưa kết nối tra cứu hành trình trực tiếp với hãng vận chuyển.
+- Khi đơn đang giao và đã nhận đủ hàng, bấm Đã nhận hàng → đọc xác nhận → Xác nhận đã nhận hàng.
+- Đơn chuyển sang Hoàn tất, lưu thời điểm ghi nhận giao thành công và thời điểm khách xác nhận; có thông báo trong website. Đây là thời điểm hệ thống ghi nhận xác nhận, không tự suy ra thời điểm giao thực tế từ hãng vận chuyển.
+- Nút chỉ có ở đơn shipping của chính tài khoản. Không được xác nhận cho đơn người khác hoặc đơn chờ duyệt/đã hủy/đã hoàn tất bởi admin. Nếu server đã nhận xác nhận của khách, gửi lại yêu cầu chỉ trả kết quả cũ, không tạo lịch sử/thông báo mới.
+- Nút Tải lại giao hàng tải dữ liệu server mới nhất. Nếu mất mạng sau khi bấm xác nhận, dùng nút này để biết server đã hoàn tất chưa; có thể gửi lại cùng thao tác khi cần vì chuyển trạng thái được xử lý một lần.
+- Nếu admin đã hoàn tất đơn trước, tải lại đơn: thời điểm giao thành công được hiển thị, không cần bấm nhận hàng nữa.
 
-Mã đã có đơn sử dụng không được xóa để giữ lịch sử/hoàn lượt. Dùng Tạm ngưng nếu muốn dừng mã. Mã chưa có đơn có thể xóa.
+Xác nhận nhận hàng KHÔNG thay trạng thái thu tiền COD/thanh toán, KHÔNG trừ thêm kho, không cộng lại lượt voucher và không tự hoàn tiền. Quy trình xác nhận thu COD và đổi trả/bảo hành hiện có được giữ lại. Thời gian hoàn tất dùng delivered_at nếu có; đơn cũ tiếp tục dùng lịch sử hoàn tất như trước.
+
+## Thông báo cho user
+
+- Có thông báo khi admin thêm/sửa vận chuyển, chuyển Đang giao, chuyển Hoàn tất và khi khách xác nhận nhận hàng.
+- Thông báo chỉ gửi tới tài khoản sở hữu đơn. Bấm ở chuông thông báo sẽ mở đúng chi tiết đơn, được kiểm tra quyền trên server.
+- Chuông dùng cơ chế có sẵn: tự tải khoảng 20 giây khi tab đang hiển thị, khi quay lại tab hoặc mở chuông; có nút làm mới. Đây là thông báo trong website, không phải push trên điện thoại hay email.
+- Ghi đơn/lịch sử/thông báo cùng transaction. Nếu một phần thất bại thì hoàn tác toàn bộ. Bấm lại khi trạng thái/thông tin không đổi không tạo thông báo trùng.
 
 ## Test nhanh trên máy bạn
 
-1. Admin tạo TEST10: giảm 10%, đơn từ 100000, giảm tối đa 50000, còn 5 lượt, mỗi tài khoản 1 lượt, hạn ở tương lai, đang bật.
-2. Khách mở menu Mã giảm giá: phải thấy TEST10 và điều kiện đúng.
-3. Giỏ tổng 400000 → dùng TEST10: giảm 40000, thanh toán 360000. Giỏ tổng 1000000: chỉ giảm tối đa 50000.
-4. Chưa đặt hàng: tải lại danh sách ở admin, số lượt vẫn là 5. Bỏ mã: tổng về giá chưa giảm.
-5. Đặt hàng thành công: số lượt còn 4. Tài khoản đó thử mã ở giỏ mới: báo hết lượt cá nhân.
-6. Hủy đơn chờ xác nhận: số lượt về 5, tài khoản dùng lại được. Gửi lại yêu cầu hủy không được cộng lượt lần hai.
-7. Thử mã sai, mã tắt/hết hạn/hết lượt, đơn dưới tối thiểu: phải báo rõ và chưa đặt đơn.
-8. Áp dụng mã, sau đó admin sửa giá sản phẩm/mức giảm/hạn/giới hạn: checkout phải kiểm tra lại và yêu cầu áp dụng lại, không đặt bằng tổng đã cũ.
-9. Mở/đóng danh sách mã và chi tiết sản phẩm nhiều lần: mục đã xem chỉ xuất hiện một lần; các chức năng cũ được giữ lại.
+1. Dùng một tài khoản khách đặt đơn COD; admin xác nhận đơn.
+2. Admin nhập GHN, mã GHN-TEST-001, ngày dự kiến ngày mai rồi lưu. Khách mở chuông (hoặc đợi cập nhật), thấy thông báo và bấm để vào đúng đơn.
+3. Admin chuyển Đang giao: khách nhận thêm thông báo, thấy mã/ngày/thời gian bắt đầu giao, có nút Đã nhận hàng.
+4. Sửa mã thành GHN-TEST-002 hoặc đổi ngày dự kiến: khách thấy thông báo mới và thông tin mới sau Tải lại giao hàng. Lưu cùng dữ liệu lần nữa không được tăng số thông báo.
+5. Khách bấm Đã nhận hàng rồi chọn Chưa nhận hàng: đơn vẫn shipping. Thử lại và xác nhận: đơn completed, có giờ giao/xác nhận và thông báo hoàn tất.
+6. Tải lại hoặc gửi lại yêu cầu nhận hàng: thời gian không đổi, không có thêm lịch sử/thông báo. Kho và thanh toán COD giữ nguyên.
+7. Đăng nhập khách khác: không được xem/xác nhận đơn này. User không được truy cập API quản lý giao hàng của admin.
+8. Đơn pending/cancelled/completed không có nút nhận hàng; admin không sửa vận chuyển của đơn đã hủy/hoàn tất.
+9. Hai cửa sổ admin mở cùng đơn rồi sửa khác nhau: lần sửa sau báo xung đột và yêu cầu tải lại.
 
-## Kiểm thử đã thực hiện
+## GitHub và kiểm thử
 
-156 bài backend / 1132 assertions đạt, gồm 14 bài mới về voucher. 7 nhóm React/jsdom mới đạt: áp/bỏ/chọn mã, tổng tiền, payload checkout/địa chỉ đã lưu, mã hết lượt, giỏ thay đổi, phản hồi muộn, retry/phân trang, admin lưu giới hạn và menu tài khoản. Build production đạt, còn cảnh báo Tailwind và kích thước bundle có sẵn.
+Gói update-only gồm 4 file mới và 11 file sửa (15 file). Giải nén rồi upload nội dung vào đúng đường dẫn repository. Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log. Nội dung commit trong UPDATE.md.
 
-Backend test dùng SQLite riêng, chưa xác minh bằng MySQL thật hoặc trình duyệt đang chạy trên máy bạn. Không dùng database/.env của bạn để kiểm thử.
-
-## GitHub
-
-Giải nén gói update-only và upload nội dung vào gốc repository, giữ nguyên thư mục. Gồm 5 file mới và 11 file sửa (16 file). Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log. Chi tiết và commit trong UPDATE.md.
+167 bài backend / 1225 assertions đạt trên SQLite riêng, gồm 11 bài mới về giao hàng, quyền, thời điểm, thông báo, retry và rollback. 6 nhóm React/jsdom mới đạt cho admin, khách, chi tiết đơn và chuông thông báo. Production build đạt; còn cảnh báo Tailwind/bundle có sẵn. Chưa chạy trên MySQL hoặc trình duyệt thật của máy bạn. Một test bảo hành cũ được chỉnh dùng ngày theo timezone bảo hành thay vì UTC để kết quả ổn định qua nửa đêm; nghiệp vụ bảo hành không bị đổi.
 
 ## Cài mới từ đầu
 
@@ -68,7 +71,7 @@ Sau khi chuẩn bị .env theo các bước bên dưới, thêm cấu hình Gemi
 
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-customer-vouchers-full.zip` vào một thư mục mới.
+Giải nén `electronics-store-delivery-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -158,6 +161,7 @@ php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping
 php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_notifications_table.php
 php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
 php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
+php artisan migrate --path=database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
 php artisan optimize:clear
 ```
 

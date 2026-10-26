@@ -5,6 +5,7 @@ import { cancellationNote } from '../utils/orderStatus';
 import ReturnRequestPanel from './ReturnRequestPanel';
 import OrderProductReview from './OrderProductReview';
 import RebuyPanel from './RebuyPanel';
+import {DeliveryReceiptPanel} from './OrderDelivery';
 
 export default function MyOrdersModal({ isOpen, onClose, onOrderChanged, initialOrderId, userId, onRebuy, onOpenCart, cartBusy }) {
   if (!isOpen) return null;
@@ -14,6 +15,7 @@ export default function MyOrdersModal({ isOpen, onClose, onOrderChanged, initial
 function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRebuy, onOpenCart, cartBusy }) {
 
   const [rebuyBusy, setRebuyBusy] = useState(false);
+  const [receiptBusy, setReceiptBusy] = useState(false);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -90,14 +92,14 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
               {selectedOrder ? `Chi Tiết Đơn Hàng: ${selectedOrder.maDH}` : 'Đơn Hàng Của Tôi'}
             </h3>
           </div>
-          <button aria-label={selectedOrder ? 'Quay lại danh sách' : 'Đóng đơn hàng'} disabled={cancelling || rebuyBusy} onClick={() => { setShowCancel(false); setReason(''); setError(''); setMessage(''); if (selectedOrder) setSelectedOrder(null); else onClose(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
+          <button aria-label={selectedOrder ? 'Quay lại danh sách' : 'Đóng đơn hàng'} disabled={cancelling || rebuyBusy || receiptBusy} onClick={() => { setShowCancel(false); setReason(''); setError(''); setMessage(''); if (selectedOrder) setSelectedOrder(null); else onClose(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>
             <X size={20} color="#64748b" />
           </button>
         </div>
 
         {/* Body */}
         <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {error && <div role="alert" style={{ color: '#b91c1c', marginBottom: 16 }}>{error} <button type="button" disabled={cancelling || rebuyBusy} onClick={() => { setError(''); fetchOrders(); }}>Tải lại đơn hàng</button></div>}
+          {error && <div role="alert" style={{ color: '#b91c1c', marginBottom: 16 }}>{error} <button type="button" disabled={cancelling || rebuyBusy || receiptBusy} onClick={() => { setError(''); fetchOrders(); }}>Tải lại đơn hàng</button></div>}
           {message && <p role="status" style={{ padding: 12, borderRadius: 8, background: '#f0fdf4', color: '#166534' }}>{message}</p>}
           
           {loading ? (
@@ -106,7 +108,7 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
             /* Chi tiết 1 đơn hàng */
             <div>
               <button 
-                disabled={cancelling || rebuyBusy}
+                disabled={cancelling || rebuyBusy || receiptBusy}
                 onClick={() => { setSelectedOrder(null); setShowCancel(false); setReason(''); setError(''); setMessage(''); }}
                 style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', marginBottom: '16px', padding: 0 }}
               >
@@ -132,13 +134,13 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
                   <button type="button" onClick={() => { setShowCancel(true); setReason(''); setError(''); setMessage(''); }} style={{ padding: '9px 16px', background: '#fff', border: '1px solid #dc2626', borderRadius: 8, color: '#b91c1c', cursor: 'pointer', fontWeight: 700 }}>Hủy đơn hàng</button>
                 </> : <form onSubmit={cancelSelectedOrder}>
                   <label style={{ display: 'grid', gap: 8, fontWeight: 600 }}>Lý do hủy đơn (tối đa 200 ký tự)
-                    <textarea name="cancel_reason" autoFocus required maxLength={200} rows={3} disabled={cancelling || rebuyBusy} value={reason} onChange={event => setReason(event.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 8, border: '1px solid #cbd5e1', font: 'inherit', resize: 'vertical' }} />
+                    <textarea name="cancel_reason" autoFocus required maxLength={200} rows={3} disabled={cancelling || rebuyBusy || receiptBusy} value={reason} onChange={event => setReason(event.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: 10, borderRadius: 8, border: '1px solid #cbd5e1', font: 'inherit', resize: 'vertical' }} />
                   </label>
                   <p style={{ fontSize: 13, color: '#64748b' }}>Hủy đơn sẽ hoàn lại số lượng vào kho và không thể khôi phục đơn này.</p>
                   {selectedOrder.payment?.payment_status === 'paid' && <p style={{ color: '#b45309' }}>Đơn đã thanh toán. Sau khi hủy, cần liên hệ cửa hàng để xử lý hoàn tiền.</p>}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                    <button type="submit" disabled={cancelling || rebuyBusy} style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '10px 16px', cursor: 'pointer' }}>{cancelling ? 'Đang hủy...' : 'Xác nhận hủy đơn'}</button>
-                    <button type="button" disabled={cancelling || rebuyBusy} onClick={() => { setShowCancel(false); setReason(''); setError(''); }}>Giữ lại đơn</button>
+                    <button type="submit" disabled={cancelling || rebuyBusy || receiptBusy} style={{ background: '#dc2626', color: '#fff', border: 0, borderRadius: 8, padding: '10px 16px', cursor: 'pointer' }}>{cancelling ? 'Đang hủy...' : 'Xác nhận hủy đơn'}</button>
+                    <button type="button" disabled={cancelling || rebuyBusy || receiptBusy} onClick={() => { setShowCancel(false); setReason(''); setError(''); }}>Giữ lại đơn</button>
                   </div>
                 </form>}
               </div>}
@@ -149,7 +151,9 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
               </div>}
               {['confirmed', 'shipping', 'completed'].includes(selectedOrder.status) && <p style={{ color: '#64748b', fontSize: 14 }}>Đơn đã được xử lý nên không thể tự hủy. Vui lòng liên hệ cửa hàng nếu cần hỗ trợ.</p>}
 
-              {onRebuy && userId && <RebuyPanel key={selectedOrder.id} orderId={selectedOrder.id} userId={userId} onRebuy={onRebuy} onOpenCart={onOpenCart} cartBusy={cartBusy || cancelling} onBusyChange={setRebuyBusy} />}
+              <DeliveryReceiptPanel key={`delivery:${selectedOrder.id}`} order={selectedOrder} disabled={rebuyBusy||cancelling} onBusyChange={setReceiptBusy}
+                onUpdated={updated=>{setOrders(previous=>previous.map(row=>row.id===updated.id?updated:row));setSelectedOrder(updated);onOrderChanged?.();}} />
+              {onRebuy && userId && <RebuyPanel key={selectedOrder.id} orderId={selectedOrder.id} userId={userId} onRebuy={onRebuy} onOpenCart={onOpenCart} cartBusy={cartBusy || cancelling || receiptBusy} onBusyChange={setRebuyBusy} />}
               <ReturnRequestPanel key={`${selectedOrder.id}-${selectedOrder.status}-${selectedOrder.payment?.payment_status}`} orderId={selectedOrder.id} />
               {/* Danh sách mặt hàng */}
               <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflowX: 'auto', marginBottom: '20px' }}>
@@ -253,3 +257,4 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
     </div>
   );
 }
+

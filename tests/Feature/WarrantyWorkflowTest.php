@@ -45,7 +45,7 @@ class WarrantyWorkflowTest extends OrderTestCase
     {
         $user = $this->account(); $order = $this->purchase($user, 'completed', true, 'paid');
         $this->actingAs($this->administrator(), 'sanctum'); $warranty = $this->issue($order);
-        $warranty->update(['end_date' => now()->toDateString()]);
+        $warranty->update(['end_date' => now(config('warranty.timezone'))->toDateString()]);
         $this->postJson('/api/warranties/check', ['serial_number' => 'serial-0001'])->assertOk()->assertJsonPath('data.effective_status', 'valid')->assertJsonMissingPath('data.customer_name')->assertJsonMissingPath('data.customer_phone')->assertJsonMissingPath('data.order');
         $this->travel(1)->days();
         $this->postJson('/api/warranties/check', ['serial_number' => 'SERIAL-0001'])->assertOk()->assertJsonPath('data.effective_status', 'expired');

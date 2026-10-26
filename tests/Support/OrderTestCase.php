@@ -36,6 +36,7 @@ abstract class OrderTestCase extends AccountTestCase
             $table->id(); $table->unsignedBigInteger('order_id'); $table->unsignedBigInteger('product_id');
             $table->integer('quantity'); $table->decimal('price', 15, 2); $table->decimal('total_line', 15, 2);
         });
+        (require __DIR__.'/../../database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php')->up();
         Schema::create('order_history', function (Blueprint $table) {
             $table->id(); $table->unsignedBigInteger('order_id'); $table->string('status_changed');
             $table->unsignedBigInteger('changed_by'); $table->string('note', 255)->nullable(); $table->timestamp('created_at')->nullable();
