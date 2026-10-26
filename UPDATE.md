@@ -1,78 +1,67 @@
-# Thêm mua lại đơn cũ và sản phẩm đã xem gần đây
+# Cập nhật mã giảm giá cho khách hàng
+
+So với bản mua lại đơn cũ + đã xem gần đây đã sửa lỗi React key.
 
 ## Chức năng
 
-- Mua lại từ chi tiết đơn của chính user, xem trước giá/tồn kho hiện tại, chọn món và giảm số lượng khi cần.
-- Tính cả số lượng có sẵn trong giỏ; báo hết hàng, ngừng bán, đã xóa hoặc không đủ số lượng.
-- Kiểm tra lại giá và tồn kho khi xác nhận. Toàn bộ lần thêm rollback nếu một dòng không còn hợp lệ.
-- Mã UUID và biên nhận server chống cộng trùng khi gửi lại cùng yêu cầu sau mất mạng. Dữ liệu yêu cầu chờ lưu trong sessionStorage theo tài khoản/đơn.
-- Chỉ thêm vào giỏ, không tạo đơn/thanh toán, không thay đổi đơn cũ hay trừ kho, không áp lại voucher/địa chỉ cũ.
-- Sản phẩm đã xem gần đây: 12 mục, mới nhất trước, không trùng, tách riêng khách và từng tài khoản trên cùng trình duyệt.
-- Chỉ lưu id/thời gian tại localStorage. Server trả dữ liệu sản phẩm công khai hiện tại; mục ngừng bán/đã xóa là placeholder có thể bỏ.
-- Có mở chi tiết, thêm giỏ theo dữ liệu mới nhất, xóa từng mục hoặc xóa bucket hiện tại với xác nhận. Không đọc lịch sử giữa các thiết bị và không gửi lịch sử sang AI.
+- Menu tài khoản xem/sao chép các mã đang phát hành từ database, hiển thị điều kiện và phân trang.
+- Checkout chọn hoặc nhập mã, áp dụng, bỏ mã và xem tiền giảm/tổng thanh toán theo giỏ trên server.
+- Kiểm tra hiệu lực, đơn tối thiểu, số lượt chung và giới hạn mỗi tài khoản. Mỗi đơn một mã, không giữ lượt khi xem trước.
+- Checkout khóa user/cart/product/voucher, tính tiền theo đơn vị nhỏ nhất; không tin tiền giảm hoặc tạm tính từ client. Bản xem trước có chữ ký gắn user, giỏ và điều kiện mã; dữ liệu đổi phải áp dụng lại.
+- Tạo đơn/thanh toán/chi tiết/trừ kho/trừ lượt/xóa giỏ cùng transaction; lỗi lưu hoàn tác toàn bộ. Thanh toán giữ luồng hiện có của dự án.
+- Hủy đơn qua luồng hiện có hoàn lượt chung đúng một lần; số đơn chưa hủy xác định lượt cá nhân, bao gồm đơn từ các bản cũ. Đổi trả/hoàn tiền không tự hoàn lượt.
+- Admin quản lý giới hạn mỗi tài khoản, ngày/giờ hết hạn, chuẩn hóa mã và không xóa mã đã có đơn sử dụng.
+- Giữ bản sửa lỗi lặp mục đã xem gần đây và toàn bộ chức năng trước đó.
 
-## File thay đổi so với bản Gemini Flash-Lite mới nhất
+## File mới (5)
 
-Thêm 7 file, sửa 8 file, không xóa file nào.
+- app/Http/Controllers/Api/CustomerVoucherController.php
+- app/Services/CustomerVoucher.php
+- database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
+- resources/js/components/CustomerVouchers.jsx
+- tests/Feature/CustomerVoucherTest.php
 
-### File mới
+## File sửa (11)
 
-- `app/Http/Controllers/Api/OrderRebuyController.php`
-- `app/Http/Controllers/Api/RecentlyViewedController.php`
-- `database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php`
-- `resources/js/components/RebuyPanel.jsx`
-- `resources/js/components/RecentlyViewed.jsx`
-- `resources/js/hooks/useRecentlyViewed.js`
-- `tests/Feature/RebuyRecentTest.php`
+- app/Http/Controllers/Api/AdminController.php
+- app/Http/Controllers/Api/OrderController.php
+- app/Models/Voucher.php
+- resources/js/app.jsx
+- resources/js/components/CheckoutModal.jsx
+- resources/js/components/Navbar.jsx
+- resources/js/components/VoucherManagement.jsx
+- resources/js/services/api.js
+- routes/api.php
+- HUONG_DAN_CHAY.md
+- UPDATE.md
 
-### File sửa
-
-- `resources/js/app.jsx`
-- `resources/js/components/MyOrdersModal.jsx`
-- `resources/js/components/ProductDetailModal.jsx`
-- `resources/js/hooks/useStoreCart.js`
-- `resources/js/services/api.js`
-- `routes/api.php`
-- `HUONG_DAN_CHAY.md`
-- `UPDATE.md`
-
-## Cập nhật database
-
-Giữ nguyên .env/MySQL/Gmail/Gemini/APP_KEY. Chạy:
+## Migration
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
+php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
 php artisan optimize:clear
 ```
 
-Khởi động lại PHP và Vite hoặc build lại. Không nhập lại SQL, không chạy migrate:fresh. Chi tiết cài mới/cập nhật/test trong HUONG_DAN_CHAY.md.
+Giữ .env, database và APP_KEY. Migration thêm per_user_limit mặc định 1 cho mã cũ/mới; các đơn cũ chưa hủy vẫn tính lượt. Admin điều chỉnh nếu cần. Khởi động lại Vite hoặc build rồi tải lại toàn bộ trang. Không nhập lại SQL/migrate:fresh.
 
-## Kiểm thử
+## Validation
 
-- 142 bài backend, 1020 assertions: đạt, gồm 11 bài mới cho hai chức năng; dùng SQLite riêng, không truy cập database của bạn.
-- 7 nhóm React/jsdom mới: đạt, gồm đồng bộ giỏ, retry sau mất mạng, giá thay đổi, giới hạn lịch sử, tách tài khoản, xóa, lỗi/thử lại và phản hồi cũ sau đổi tài khoản.
-- Build giao diện đạt; còn cảnh báo Tailwind/bundle có sẵn. Chưa test MySQL và browser thực tế trên máy người dùng.
+156 bài backend / 1132 assertions đạt trên SQLite riêng; 7 nhóm frontend React/jsdom mới đạt; production build đạt. Chưa test MySQL/browser thực tế của người dùng. Cảnh báo Tailwind/bundle cũ còn tồn tại.
 
-## Up GitHub
+## Commit GitHub
 
-Giải nén update-only, upload nội dung vào đúng đường dẫn repository trên nền Gemini Flash-Lite hiện tại. So sánh nếu nhóm đã chỉnh thêm cùng file. Không upload nguyên ZIP, .env, vendor, node_modules, build, log hoặc script chẩn đoán.
-
-### Tiêu đề commit
+Tiêu đề:
 
 ```text
-feat: thêm mua lại đơn cũ và sản phẩm đã xem gần đây
+feat: thêm mã giảm giá cho khách hàng và áp dụng tại checkout
 ```
 
-### Mô tả
+Mô tả:
 
 ```text
-- Mua lại từ đơn của user theo giá và tồn kho hiện tại.
-- Xem trước, chọn số lượng và chống thêm trùng khi gửi lại yêu cầu.
-- Lưu 12 sản phẩm đã xem, tách theo tài khoản và hỗ trợ xóa lịch sử.
+- Xem danh sách mã và điều kiện trong menu tài khoản.
+- Áp dụng/bỏ mã, hiển thị tiền giảm và tổng thanh toán.
+- Kiểm tra hạn, lượt dùng và giới hạn mỗi tài khoản trên server.
+- Hoàn lượt khi hủy đơn, giữ lịch sử mã đã được sử dụng.
 - Bổ sung migration, kiểm thử và hướng dẫn chạy.
 ```
-
-## Bản sửa lỗi lặp mục đã xem
-
-Đã tách key React riêng cho từng component cùng cấp trong app.jsx để tránh nhân đôi mục đã xem khi trang cập nhật. Sau khi chép bản sửa, khởi động lại Vite hoặc build lại, đóng tab cũ rồi mở lại và Ctrl+F5. Không cần xóa lịch sử, sửa .env hoặc migration bổ sung. Kiểm thử App qua 5 vòng modal, đổi tài khoản và xóa lịch sử đều đạt, không có cảnh báo key trùng.
-

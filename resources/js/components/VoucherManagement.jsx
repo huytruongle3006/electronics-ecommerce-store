@@ -4,6 +4,7 @@ import {
   getAdminVouchersApi, createVoucherApi, updateVoucherApi, 
   toggleVoucherStatusApi, deleteVoucherApi 
 } from '../services/api';
+const localDateTime = value => {const date=new Date(value);return new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16);};
 
 export default function VoucherManagement() {
   const [vouchers, setVouchers] = useState([]);
@@ -21,6 +22,7 @@ export default function VoucherManagement() {
     max_discount_amount: 500000,
     min_order_amount: 1000000,
     quantity: 50,
+    per_user_limit: 1,
     expired_at: '',
     status: 'active'
   });
@@ -61,7 +63,8 @@ export default function VoucherManagement() {
         max_discount_amount: v.max_discount_amount || 0,
         min_order_amount: v.min_order_amount || 0,
         quantity: v.quantity ?? 1,
-        expired_at: v.expired_at ? v.expired_at.substring(0, 10) : '',
+        per_user_limit: v.per_user_limit ?? 1,
+        expired_at: v.expired_at ? localDateTime(v.expired_at) : '',
         status: v.status || 'active'
       });
     } else {
@@ -72,7 +75,8 @@ export default function VoucherManagement() {
         max_discount_amount: 500000,
         min_order_amount: 2000000,
         quantity: 50,
-        expired_at: '2026-12-31',
+        per_user_limit: 1,
+        expired_at: '',
         status: 'active'
       });
     }
@@ -82,15 +86,16 @@ export default function VoucherManagement() {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      const payload={...formData,expired_at:formData.expired_at?new Date(formData.expired_at).toISOString():null};
       if (editingVoucher) {
-        await updateVoucherApi(editingVoucher.id, formData);
+        await updateVoucherApi(editingVoucher.id, payload);
       } else {
-        await createVoucherApi(formData);
+        await createVoucherApi(payload);
       }
       setIsModalOpen(false);
       fetchVouchers(pagination.current_page);
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi khi lưu voucher!');
+      alert(Object.values(err.response?.data?.errors || {}).flat()[0] || err.response?.data?.message || 'Có lỗi khi lưu voucher!');
     }
   };
 
@@ -109,7 +114,7 @@ export default function VoucherManagement() {
         await deleteVoucherApi(v.id);
         fetchVouchers(pagination.current_page);
       } catch (err) {
-        alert('Không thể xóa voucher');
+        alert(err.response?.data?.message || 'Không thể xóa voucher');
       }
     }
   };
@@ -202,10 +207,10 @@ export default function VoucherManagement() {
                     {Number(v.min_order_amount || 0).toLocaleString('vi-VN')} đ
                   </td>
                   <td style={{ padding: '12px 16px', fontWeight: 700 }}>
-                    {v.quantity} lượt
+                    {v.quantity} lượt còn lại <small style={{display:'block',fontWeight:400}}>Mỗi tài khoản: {v.per_user_limit ?? 1}</small>
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '0.8rem', color: isExpired ? '#dc2626' : '#64748b', fontWeight: isExpired ? 700 : 500 }}>
-                    {v.expired_at ? new Date(v.expired_at).toLocaleDateString('vi-VN') : 'Vô thời hạn'}
+                    {v.expired_at ? new Date(v.expired_at).toLocaleString('vi-VN') : 'Vô thời hạn'}
                     {isExpired && ' (Hết hạn)'}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
@@ -310,7 +315,7 @@ export default function VoucherManagement() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Ngày hết hạn</label>
                   <input 
-                    type="date" 
+                    type="datetime-local"
                     value={formData.expired_at} 
                     onChange={e => setFormData({ ...formData, expired_at: e.target.value })} 
                     style={{ width: '100%', boxSizing: 'border-box', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -318,6 +323,11 @@ export default function VoucherManagement() {
                 </div>
               </div>
 
+              <div>
+                <label style={{display:'block',fontSize:13,fontWeight:600}}>Số lượt tối đa mỗi tài khoản</label>
+                <input aria-label="Số lượt tối đa mỗi tài khoản" type="number" min="1" max="10000" required value={formData.per_user_limit} onChange={e=>setFormData({...formData,per_user_limit:e.target.value})} style={{width:'100%',boxSizing:'border-box',padding:8,border:'1px solid #cbd5e1',borderRadius:6}} />
+                <small>Đơn đã hủy không tính vào giới hạn. Giảm tối đa = 0 nghĩa là không giới hạn tiền giảm.</small>
+              </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '4px' }}>Trạng thái</label>
                 <select

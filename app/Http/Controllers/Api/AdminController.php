@@ -414,12 +414,14 @@ class AdminController extends Controller
      */
     public function storeVoucher(Request $request)
     {
+        if (is_string($request->maVoucher)) $request->merge(['maVoucher' => strtoupper(trim($request->maVoucher))]);
         $request->validate([
-            'maVoucher'           => 'required|string|max:50|unique:vouchers,maVoucher',
-            'discount_percent'    => 'required|numeric|min:1|max:100',
-            'max_discount_amount' => 'nullable|numeric|min:0',
-            'min_order_amount'    => 'nullable|numeric|min:0',
-            'quantity'            => 'required|integer|min:1',
+            'maVoucher'           => 'required|string|max:20|regex:/^[A-Z0-9_-]+$/D|unique:vouchers,maVoucher',
+            'discount_percent'    => 'required|numeric|min:1|max:100|decimal:0,2',
+            'max_discount_amount' => 'nullable|numeric|min:0|max:9999999999999.99|decimal:0,2',
+            'min_order_amount'    => 'nullable|numeric|min:0|max:9999999999999.99|decimal:0,2',
+            'quantity'            => 'required|integer|min:1|max:1000000',
+            'per_user_limit'      => 'sometimes|required|integer|min:1|max:10000',
             'expired_at'          => 'nullable|date',
             'status'              => 'nullable|in:active,inactive'
         ]);
@@ -430,6 +432,7 @@ class AdminController extends Controller
             'max_discount_amount' => $request->max_discount_amount ?? 0,
             'min_order_amount'    => $request->min_order_amount ?? 0,
             'quantity'            => $request->quantity,
+            'per_user_limit'      => $request->input('per_user_limit', 1),
             'expired_at'          => $request->expired_at,
             'status'              => $request->status ?? 'active',
         ]);
@@ -447,13 +450,15 @@ class AdminController extends Controller
     public function updateVoucher(Request $request, $id)
     {
         $voucher = \App\Models\Voucher::findOrFail($id);
+        if (is_string($request->maVoucher)) $request->merge(['maVoucher' => strtoupper(trim($request->maVoucher))]);
 
         $request->validate([
-            'maVoucher'           => 'required|string|max:50|unique:vouchers,maVoucher,' . $id,
-            'discount_percent'    => 'required|numeric|min:1|max:100',
-            'max_discount_amount' => 'nullable|numeric|min:0',
-            'min_order_amount'    => 'nullable|numeric|min:0',
-            'quantity'            => 'required|integer|min:0',
+            'maVoucher'           => 'required|string|max:20|regex:/^[A-Z0-9_-]+$/D|unique:vouchers,maVoucher,' . $id,
+            'discount_percent'    => 'required|numeric|min:1|max:100|decimal:0,2',
+            'max_discount_amount' => 'nullable|numeric|min:0|max:9999999999999.99|decimal:0,2',
+            'min_order_amount'    => 'nullable|numeric|min:0|max:9999999999999.99|decimal:0,2',
+            'quantity'            => 'required|integer|min:0|max:1000000',
+            'per_user_limit'      => 'sometimes|required|integer|min:1|max:10000',
             'expired_at'          => 'nullable|date',
             'status'              => 'required|in:active,inactive'
         ]);
@@ -464,6 +469,7 @@ class AdminController extends Controller
             'max_discount_amount' => $request->max_discount_amount ?? 0,
             'min_order_amount'    => $request->min_order_amount ?? 0,
             'quantity'            => $request->quantity,
+            'per_user_limit'      => $request->input('per_user_limit', $voucher->per_user_limit),
             'expired_at'          => $request->expired_at,
             'status'              => $request->status,
         ]);
@@ -496,13 +502,14 @@ class AdminController extends Controller
      */
     public function deleteVoucher($id)
     {
-        $voucher = \App\Models\Voucher::findOrFail($id);
-        $voucher->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã xóa mã voucher thành công!'
-        ]);
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($id) {
+            $voucher = \App\Models\Voucher::whereKey($id)->lockForUpdate()->firstOrFail();
+            if ($voucher->orders()->exists()) {
+                return response()->json(['message' => 'Mã đã có đơn sử dụng. Hãy tạm ngưng mã để giữ lịch sử và hoàn lượt khi hủy đơn.'], 422);
+            }
+            $voucher->delete();
+            return response()->json(['success' => true, 'message' => 'Đã xóa mã voucher thành công!']);
+        });
     }
     public function getSettings()
     {

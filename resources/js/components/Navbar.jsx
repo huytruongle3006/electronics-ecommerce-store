@@ -3,7 +3,7 @@ import { Search, ShieldCheck, ShoppingCart, User, LogOut, Package, LayoutDashboa
 import './Navbar.css';
 import NotificationBell from './NotificationBell';
 
-export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false, onOpenNotification }) {
+export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false, onOpenNotification, onOpenVouchers }) {
     const [expanded, setExpanded] = useState(false);
     const account = useRef(null), trigger = useRef(null);
     const admin = !!user && (user.is_admin || user.roles_list?.includes('ADMIN') || user.roles?.some(role => role === 'ADMIN' || role.maRole === 'ADMIN'));
@@ -29,6 +29,7 @@ export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenC
                     {expanded && <div className="store-account__panel" id="store-account-panel"><div className="store-account__intro"><strong>{user.full_name}</strong><span>Tài khoản TECHSTORE của bạn</span></div><nav aria-label="Tùy chọn tài khoản">
                         <button type="button" onClick={() => act(onOpenAccount)}><User size={17} />Quản lý tài khoản</button>
                         <button type="button" onClick={() => act(onOpenOrders)}><Package size={17} />Đơn hàng của tôi</button>
+                        <button type="button" onClick={() => act(onOpenVouchers)}><Zap size={17} />Mã giảm giá</button>
                         <button type="button" onClick={() => act(onOpenMyReviews)}><MessageSquare size={17} />Đánh giá của tôi</button>
                         <button type="button" onClick={() => act(onOpenFavorites)}><Heart size={17} />Sản phẩm yêu thích{favoriteCount > 0 && <span className="store-account__badge">{favoriteCount}</span>}</button>
                         {admin && <button type="button" onClick={() => act(onOpenAdmin)}><LayoutDashboard size={17} />Trang quản trị</button>}

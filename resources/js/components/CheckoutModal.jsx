@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, CheckCircle2, CreditCard, Truck, ShieldCheck, MapPin, Phone, User, Tag } from 'lucide-react';
 import { ShippingAddressPicker } from './AddressBook';
 import { checkoutApi } from '../services/api';
+import CustomerVouchers from './CustomerVouchers';
 
 export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount, user, onOrderSuccess }) {
 
@@ -19,6 +20,10 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [orderSuccessData, setOrderSuccessData] = useState(null);
+  const [voucherQuote, setVoucherQuote] = useState(null);
+  const [voucherBusy, setVoucherBusy] = useState(false);
+  const submitting = useRef(false);
+  const cartSignature = JSON.stringify(cartItems.map(item => [item.product?.id || item.product_id || item.id, item.quantity ?? item.cartQty, item.product?.price ?? item.price]));
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,24 +32,29 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (loading || addressBusy) return;
+    if (submitting.current || loading || addressBusy || voucherBusy) return;
+    if (formData.voucher_code.trim() && !voucherQuote) { setError('Vui lòng áp dụng mã để xác nhận tổng tiền hoặc bỏ mã.'); return; }
     if (!selectedAddress && (!formData.recipient_name || !formData.recipient_phone || !formData.shipping_address)) {
       setError('Vui lòng điền đầy đủ thông tin giao hàng!');
       return;
     }
 
+    submitting.current = true;
     setLoading(true);
     setError('');
 
     try {
-      const res = await checkoutApi(selectedAddress ? { payment_method: formData.payment_method, voucher_code: formData.voucher_code, note: formData.note, address_id: selectedAddress.id } : formData);
+      const coupon = {voucher_code: voucherQuote?.voucher.code || '', voucher_quote: voucherQuote?.quote_token || null};
+      const res = await checkoutApi(selectedAddress ? { payment_method: formData.payment_method, ...coupon, note: formData.note, address_id: selectedAddress.id } : {...formData,...coupon});
       if (res.data.success) {
         setOrderSuccessData(res.data.data);
         onOrderSuccess();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo đơn hàng!');
+      setError(err.response?.data?.errors?.voucher_code?.[0] || err.response?.data?.message || 'Chưa xác nhận được đơn hàng. Kiểm tra Đơn hàng của tôi trước khi đặt lại.');
+      if ([409, 422].includes(err.response?.status)) setVoucherQuote(null);
     } finally {
+      submitting.current = false;
       setLoading(false);
     }
   };
@@ -61,7 +71,7 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
               {orderSuccessData ? 'Đặt Hàng Thành Công' : 'Thanh Toán & Đặt Hàng'}
             </h3>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+          <button disabled={loading} onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
             <X size={20} color="#64748b" />
           </button>
         </div>
@@ -204,45 +214,29 @@ export default function CheckoutModal({ isOpen, onClose, cartItems, totalAmount,
                 </div>
               </div>
 
-              {/* Voucher */}
-              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  3. Mã giảm giá (Voucher)
-                </span>
-                <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                  <input 
-                    type="text" 
-                    name="voucher_code"
-                    placeholder="Nhập mã (Ví dụ: CHAOMUNG)"
-                    value={formData.voucher_code}
-                    onChange={handleChange}
-                    style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', outline: 'none', textTransform: 'uppercase' }}
-                  />
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
-                  Mã có sẵn trong hệ thống: <strong>CHAOMUNG</strong> (Giảm 10%), <strong>SALEKHUNG</strong> (Giảm 15%)
-                </div>
-              </div>
+              <CustomerVouchers code={formData.voucher_code} onCodeChange={code => setFormData(previous => ({...previous,voucher_code:code}))}
+                quote={voucherQuote} onQuoteChange={setVoucherQuote} onBusyChange={setVoucherBusy} disabled={loading} cartSignature={cartSignature} />
 
               {/* Tổng kết tiền */}
               <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', marginTop: '6px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px', color: '#64748b' }}>
                   <span>Tạm tính ({cartItems.length} sản phẩm):</span>
-                  <span>{totalAmount.toLocaleString('vi-VN')} đ</span>
+                  <span>{Number(voucherQuote?.subtotal ?? totalAmount).toLocaleString('vi-VN')} đ</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '8px', color: '#64748b' }}>
                   <span>Phí giao hàng:</span>
                   <span style={{ color: '#16a34a', fontWeight: 600 }}>Miễn phí</span>
                 </div>
+                {voucherQuote && <div style={{display:'flex',justifyContent:'space-between',color:'#15803d',marginBottom:8}}><span>Giảm giá ({voucherQuote.voucher.code}):</span><span>-{Number(voucherQuote.discount_amount).toLocaleString('vi-VN')} đ</span></div>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                   <span>Tổng thanh toán:</span>
-                  <span style={{ color: '#dc2626' }}>{totalAmount.toLocaleString('vi-VN')} đ</span>
+                  <span style={{ color: '#dc2626' }}>{Number(voucherQuote?.final_amount ?? totalAmount).toLocaleString('vi-VN')} đ</span>
                 </div>
               </div>
 
               <button 
                 type="submit"
-                disabled={loading || addressBusy}
+                disabled={loading || addressBusy || voucherBusy || (!!formData.voucher_code.trim() && !voucherQuote)}
                 style={{
                   padding: '13px',
                   backgroundColor: '#2563eb',

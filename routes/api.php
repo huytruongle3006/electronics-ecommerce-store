@@ -74,6 +74,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/orders/{id}/rebuy', [\App\Http\Controllers\Api\OrderRebuyController::class, 'preview'])->whereNumber('id');
     Route::post('/orders/{id}/rebuy', [\App\Http\Controllers\Api\OrderRebuyController::class, 'store'])->whereNumber('id')->middleware('throttle:10,1');
+    Route::get('/vouchers', [\App\Http\Controllers\Api\CustomerVoucherController::class, 'index'])->middleware('throttle:60,1');
+    Route::post('/vouchers/preview', [\App\Http\Controllers\Api\CustomerVoucherController::class, 'preview'])->middleware('throttle:30,1');
     // Đơn hàng & Checkout
     Route::post('/checkout', [OrderController::class, 'checkout']);
     Route::get('/orders/my-orders', [OrderController::class, 'myOrders']);

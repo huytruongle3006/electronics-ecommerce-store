@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import Navbar from './components/Navbar';
 import ProductAdvisor from './components/ProductAdvisor';
 import RecentlyViewed from './components/RecentlyViewed';
+import { CustomerVoucherModal } from './components/CustomerVouchers';
 import useRecentlyViewed from './hooks/useRecentlyViewed';
 import useStoreCart from './hooks/useStoreCart';
 import CartSyncNotice from './components/CartSyncNotice';
@@ -58,6 +59,7 @@ export function App() {
     const [loading, setLoading] = useState(true);
     const [selectedProductId, setSelectedProductId] = useState(null);
     const [isMyReviewsOpen, setIsMyReviewsOpen] = useState(false);
+    const [isVouchersOpen, setIsVouchersOpen] = useState(false);
     const [isOrdersOpen, setIsOrdersOpen] = useState(false);
     const [isAccountOpen, setIsAccountOpen] = useState(false);
     const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
@@ -99,7 +101,7 @@ export function App() {
     }, []);
     const wishlist = useWishlist(currentUser);
     const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-    useEffect(() => { setIsWishlistOpen(false); setIsMyReviewsOpen(false); setSelectedProductId(null); }, [currentUser?.id]);
+    useEffect(() => { setIsWishlistOpen(false); setIsMyReviewsOpen(false); setIsVouchersOpen(false); setSelectedProductId(null); }, [currentUser?.id]);
     const toggleFavorite = product => {
         if (!currentUser) { setSelectedProductId(null); setIsAuthOpen(true); return; }
         return wishlist.toggle(product);
@@ -231,6 +233,7 @@ export function App() {
                     else { setIsWarrantyOpen(false); setIsOrdersOpen(true); }
                 }}
                 onOpenAccount={() => setIsAccountOpen(true)}
+                onOpenVouchers={() => setIsVouchersOpen(true)}
                 onOpenAdmin={() => setIsAdminView(true)}
             />
 
@@ -272,6 +275,8 @@ export function App() {
             </main>
 
             <RecentlyViewed key={`recent:${currentUser?.id || 'guest'}`} recent={recent} cartBusy={cart.busy} onAddToCart={addToCart} onViewDetail={id => setSelectedProductId(id)} />
+            {isVouchersOpen && currentUser && <CustomerVoucherModal key={`vouchers:${currentUser.id}`}
+                onClose={() => setIsVouchersOpen(false)} onOpenCart={() => {setIsVouchersOpen(false);setIsCartOpen(true);}} />}
             {isAccountOpen && currentUser && <AccountModal key={`account:${currentUser.id}`}
                 user={currentUser}
                 onClose={() => setIsAccountOpen(false)}

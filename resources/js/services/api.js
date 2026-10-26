@@ -38,6 +38,8 @@ export const getMyOrdersApi = () => api.get('/orders/my-orders');
 export const cancelOrderApi = (id, reason) => api.post(`/orders/${id}/cancel`, { reason });
 export const getOrderDetailApi = (id) => api.get(`/orders/${id}`);
 export const checkoutApi = (data) => api.post('/checkout', data);
+export const getCustomerVouchersApi = (page = 1, signal) => api.get('/vouchers', { params: {page}, signal, timeout: 12000 });
+export const previewVoucherApi = (code, signal) => api.post('/vouchers/preview', {code}, {signal, timeout: 12000});
 
 //Review API
 export const getProductReviews = (productId, params = {}) => api.get(`/products/${productId}/reviews`, { params });

@@ -1,67 +1,66 @@
-# TECHSTORE — Mua lại đơn cũ và sản phẩm đã xem gần đây
+# TECHSTORE — Mã giảm giá cho khách hàng
 
-## Cập nhật bản đang chạy
+## Cập nhật từ bản mua lại + đã xem đã sửa lỗi
 
-1. Giải nén electronics-store-rebuy-recent-update-only.zip rồi chép nội dung vào đúng thư mục dự án có artisan; giữ các đường dẫn và cho phép thay file cũ. Gói cần nền code Gemini Flash-Lite mới nhất đã giao. Nếu nhóm sửa cùng file, so sánh trước khi ghi đè.
-2. Giữ nguyên .env, APP_KEY, MySQL, Gmail và key Gemini đang dùng. Không nhập lại SQL hoặc tạo lại khóa.
-3. Trong Terminal VS Code ở thư mục có artisan, chạy từng lệnh:
+1. Giải nén electronics-store-customer-vouchers-update-only.zip. Chép nội dung vào thư mục có artisan, giữ đúng đường dẫn và thay các file cũ. Gói cập nhật cần nền bản mua lại/đã xem gần đây đã sửa lỗi React key. Nếu nhóm đã sửa cùng file, đối chiếu trước khi chép.
+2. Giữ nguyên .env, APP_KEY, database MySQL, Gmail và Gemini. Không nhập lại SQL, không chạy migrate:fresh và không tạo lại khóa.
+3. Trong Terminal VS Code ở đúng thư mục có artisan, chạy từng lệnh:
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
+php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
 php artisan optimize:clear
 ```
 
-Migration mới chỉ tạo bảng order_rebuy_batches để ghi nhận mã yêu cầu mua lại. Không chạy migrate:fresh hoặc nhập lại database cũ.
+4. Dừng và mở lại php artisan serve nếu đang chạy. Chạy npm.cmd run dev ở terminal khác; nếu dùng giao diện build thì chạy npm.cmd run build. Đóng tab website cũ, mở lại http://localhost:8000 rồi Ctrl+F5.
 
-4. Dừng/khởi động lại php artisan serve nếu đang chạy. Mở terminal thứ hai chạy npm.cmd run dev. Nếu dùng giao diện build thì chạy npm.cmd run build. Mở http://localhost:8000 và Ctrl+F5.
+Migration chỉ bổ sung cột per_user_limit trong vouchers, mặc định 1 lượt/tài khoản cho cả mã cũ. Các đơn cũ chưa hủy đã dùng mã được tính vào giới hạn này. Admin có thể tăng giới hạn ở Quản lý mã giảm giá. Không cần cài thêm package hay cấu hình API.
 
-## Cách dùng Mua lại
+## Cách dùng cho khách hàng
 
-- Đăng nhập → tài khoản → Đơn hàng của tôi → mở chi tiết đơn → Mua lại.
-- Hệ thống tải giá/tồn kho hiện tại và số lượng đã có trong giỏ. Có thể bỏ chọn hoặc giảm số lượng, tối đa bằng số lượng gốc và phần tồn kho còn có thể thêm.
-- Đơn nhiều dòng cùng sản phẩm được gộp số lượng. Món hết hàng, ngừng bán hoặc đã xóa được báo rõ; không tự thêm món đó.
-- Bấm Xác nhận thêm vào giỏ. Nếu giá/tồn kho đổi sau khi xem, toàn bộ lần thêm được hủy và cần kiểm tra lại giá/tồn kho, không cộng dở một số dòng.
-- Sau khi thành công bấm Xem giỏ hàng để kiểm tra rồi mới đặt đơn mới. Không áp lại voucher, thanh toán hoặc địa chỉ cũ. Không sửa đơn cũ, không tự thanh toán và không trừ/giữ tồn kho chỉ vì thêm vào giỏ.
-- Mất mạng sau khi gửi: mã yêu cầu và các món đã chọn được giữ trong sessionStorage riêng theo tài khoản/đơn. Gửi lại cùng yêu cầu sẽ không cộng trùng nếu server đã xử lý. Không sửa lựa chọn trong lúc chưa biết kết quả.
-- Nếu đóng tab hoàn toàn hoặc xóa dữ liệu phiên trình duyệt, kiểm tra giỏ trước khi tạo lần mua lại mới vì mã yêu cầu cũ có thể không còn trên trình duyệt.
+- Đăng nhập → mở menu tên tài khoản → Mã giảm giá. Danh sách lấy từ database thật, chỉ gồm mã đang bật, còn lượt toàn cửa hàng và chưa hết hạn. Có điều kiện, hạn, số lượt còn lại và giới hạn mỗi tài khoản; hỗ trợ phân trang và tải lại.
+- Có thể sao chép mã; nếu trình duyệt không cho sao chép tự động, chọn mã trên thẻ và copy thủ công.
+- Thêm sản phẩm vào giỏ → Thanh toán. Chọn Dùng mã trong danh sách hoặc nhập mã rồi Áp dụng mã. Hệ thống dùng giá/tồn kho giỏ tài khoản trên server để tính tiền giảm và tổng thanh toán; không dùng tạm tính do trình duyệt gửi.
+- Chỉ dùng một mã mỗi đơn. Có thể Bỏ mã để đặt hàng không dùng voucher. Nếu nhập mã nhưng chưa áp dụng, nút đặt hàng bị khóa để tránh hiểu nhầm đã được giảm.
+- Nếu giỏ, giá hoặc điều kiện mã thay đổi sau khi áp dụng, đặt hàng bị từ chối và cần áp dụng lại để xem tổng tiền mới. Nếu mã hết hạn/hết lượt/ngừng hoạt động, bỏ mã hoặc dùng mã khác. Xem trước không giữ lượt mã, không giữ kho.
+- Chỉ trừ lượt khi tạo đơn thành công. Đơn hủy theo luồng user/admin đang có được hoàn lượt toàn cửa hàng đúng một lần và không tính vào lượt của tài khoản. Nếu mã đã hết hạn hoặc bị tắt, việc hoàn lượt không làm mã tự có hiệu lực trở lại.
+- Đơn đã hoàn tất hoặc xử lý đổi trả/hoàn tiền vẫn tính lượt dùng; chỉ trạng thái cancelled hoàn lượt theo chính sách bản này. Phần đổi trả không được coi là hủy đơn.
+- Không có chức năng cộng dồn nhiều mã hoặc lưu ví mã cá nhân. Danh sách là các mã chung mà admin đang phát hành.
 
-## Cách dùng Sản phẩm đã xem gần đây
+## Cách tạo mã ở admin
 
-- Mở chi tiết một sản phẩm đang bán, đóng chi tiết rồi kéo xuống dưới danh sách sản phẩm trên trang cửa hàng.
-- Lịch sử giữ tối đa 12 sản phẩm, sản phẩm xem lại chuyển lên đầu, không tạo bản ghi trùng. Chỉ ghi nhận sau khi tải chi tiết thành công.
-- Giá, tồn kho được tải từ server khi hiển thị; sản phẩm ngừng bán/đã xóa có dòng thông báo và nút bỏ, không hiển thị giá cũ.
-- Có thể mở chi tiết, thêm vào giỏ, bỏ từng món hoặc xóa lịch sử sau bước xác nhận. Thêm vào giỏ tải lại tình trạng sản phẩm trước khi thực hiện.
-- Lịch sử lưu tại trình duyệt bằng id và thời gian xem, tách riêng khách và từng tài khoản; không đồng bộ qua thiết bị hoặc tự nhập lịch sử khách sang tài khoản sau đăng nhập. Đổi tài khoản không thấy lịch sử tài khoản trước.
-- Dữ liệu trình duyệt bị chặn sẽ có thông báo; dữ liệu hỏng bị bỏ qua. Tính năng không gửi lịch sử đã xem tới Gemini.
+Trang quản trị → Quản lý mã giảm giá → Tạo mã mới. Điền:
 
-## Kịch bản test
+- Mã gồm A–Z, số, dấu gạch dưới hoặc gạch ngang, tối đa 20 ký tự. Tự bỏ khoảng trắng đầu/cuối và chuyển chữ hoa.
+- Giảm từ 1–100%, tối đa 2 số thập phân.
+- Đơn tối thiểu, mức giảm tối đa. Giảm tối đa = 0 nghĩa là không giới hạn số tiền giảm; tiền giảm luôn không vượt tạm tính.
+- Số lượt dùng là số lượt còn lại toàn cửa hàng. Khi tạo mới cần ít nhất 1 lượt; sửa có thể về 0.
+- Số lượt tối đa mỗi tài khoản: 1–10000, mặc định 1.
+- Ngày/giờ hết hạn theo giờ trình duyệt máy admin; gửi về server dạng ISO có múi giờ. Bỏ trống nghĩa là không giới hạn thời gian.
+- Trạng thái Đang kích hoạt. Mã chưa đủ điều kiện sẽ giải thích cho khách ở checkout.
 
-1. Chọn một đơn cũ có sản phẩm còn hàng; mở Mua lại, đối chiếu giá cũ và hiện tại, đổi số lượng rồi xác nhận. Giỏ phải tăng đúng, đơn cũ và tồn kho giữ nguyên.
-2. Đặt một sản phẩm của đơn thành hết hàng/ngừng bán ở admin rồi xem lại: có cảnh báo và không chọn được.
-3. Mở preview mua lại, ở cửa sổ khác đổi giá hoặc tồn kho, rồi quay lại xác nhận: báo dữ liệu thay đổi, chưa thêm vào giỏ; tải lại để xác nhận giá mới.
-4. Thử mất kết nối lúc gửi, sau đó Gửi lại cùng yêu cầu: không cộng trùng. Kiểm tra cả khi đóng/mở lại hộp đơn trong cùng tab.
-5. Mở 3 sản phẩm rồi xem lại sản phẩm thứ nhất: phải lên đầu. Mở hơn 12 sản phẩm: chỉ giữ 12.
-6. Tải lại website: lịch sử còn. Đăng nhập tài khoản khác: lịch sử riêng. Khách chưa đăng nhập cũng có lịch sử riêng.
-7. Xóa một mục, thử Giữ lịch sử rồi Xác nhận xóa lịch sử. Chỉ bucket hiện tại bị xóa.
+Mã đã có đơn sử dụng không được xóa để giữ lịch sử/hoàn lượt. Dùng Tạm ngưng nếu muốn dừng mã. Mã chưa có đơn có thể xóa.
 
-## Giữ cấu hình Gemini
+## Test nhanh trên máy bạn
 
-Hai chức năng mới không cần gọi AI. Nếu .env cũ đã chạy Gemini thì giữ nguyên key/model. Khi cài mới và muốn dùng AI:
+1. Admin tạo TEST10: giảm 10%, đơn từ 100000, giảm tối đa 50000, còn 5 lượt, mỗi tài khoản 1 lượt, hạn ở tương lai, đang bật.
+2. Khách mở menu Mã giảm giá: phải thấy TEST10 và điều kiện đúng.
+3. Giỏ tổng 400000 → dùng TEST10: giảm 40000, thanh toán 360000. Giỏ tổng 1000000: chỉ giảm tối đa 50000.
+4. Chưa đặt hàng: tải lại danh sách ở admin, số lượt vẫn là 5. Bỏ mã: tổng về giá chưa giảm.
+5. Đặt hàng thành công: số lượt còn 4. Tài khoản đó thử mã ở giỏ mới: báo hết lượt cá nhân.
+6. Hủy đơn chờ xác nhận: số lượt về 5, tài khoản dùng lại được. Gửi lại yêu cầu hủy không được cộng lượt lần hai.
+7. Thử mã sai, mã tắt/hết hạn/hết lượt, đơn dưới tối thiểu: phải báo rõ và chưa đặt đơn.
+8. Áp dụng mã, sau đó admin sửa giá sản phẩm/mức giảm/hạn/giới hạn: checkout phải kiểm tra lại và yêu cầu áp dụng lại, không đặt bằng tổng đã cũ.
+9. Mở/đóng danh sách mã và chi tiết sản phẩm nhiều lần: mục đã xem chỉ xuất hiện một lần; các chức năng cũ được giữ lại.
 
-```dotenv
-AI_ADVISOR_ENABLED=true
-GEMINI_API_KEY="key_gemini_cua_ban"
-GEMINI_MODEL=gemini-3.5-flash-lite
-AI_ADVISOR_DAILY_CALL_LIMIT=80
-```
+## Kiểm thử đã thực hiện
 
-Key chỉ lưu backend. Không đưa .env lên GitHub hoặc gửi ảnh có key.
+156 bài backend / 1132 assertions đạt, gồm 14 bài mới về voucher. 7 nhóm React/jsdom mới đạt: áp/bỏ/chọn mã, tổng tiền, payload checkout/địa chỉ đã lưu, mã hết lượt, giỏ thay đổi, phản hồi muộn, retry/phân trang, admin lưu giới hạn và menu tài khoản. Build production đạt, còn cảnh báo Tailwind và kích thước bundle có sẵn.
 
-## GitHub và kiểm tra
+Backend test dùng SQLite riêng, chưa xác minh bằng MySQL thật hoặc trình duyệt đang chạy trên máy bạn. Không dùng database/.env của bạn để kiểm thử.
 
-Giải nén gói update-only và upload nội dung bên trong vào gốc repository, giữ đúng đường dẫn. Không upload nguyên ZIP, .env, vendor, node_modules, build hoặc log. Danh sách 15 file và nội dung commit trong UPDATE.md.
+## GitHub
 
-142 bài backend/1020 assertions: đạt trên SQLite riêng. 7 nhóm React/jsdom cho hai chức năng mới: đạt. Build đạt, còn cảnh báo Tailwind/bundle có sẵn. Chưa kiểm thử trên MySQL và trình duyệt thực tế của máy bạn.
+Giải nén gói update-only và upload nội dung vào gốc repository, giữ nguyên thư mục. Gồm 5 file mới và 11 file sửa (16 file). Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log. Chi tiết và commit trong UPDATE.md.
 
 ## Cài mới từ đầu
 
@@ -69,7 +68,7 @@ Sau khi chuẩn bị .env theo các bước bên dưới, thêm cấu hình Gemi
 
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-rebuy-recent-full.zip` vào một thư mục mới.
+Giải nén `electronics-store-customer-vouchers-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -158,6 +157,7 @@ php artisan migrate --path=database/migrations/2026_10_19_230000_create_guest_ca
 php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping_addresses_table.php
 php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_notifications_table.php
 php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
+php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
 php artisan optimize:clear
 ```
 
@@ -262,7 +262,4 @@ Nếu muốn dùng bản build thay vì giữ Vite chạy, thực hiện `npm.cm
 
 
 
-## Bản sửa lỗi lặp mục đã xem
-
-Đã tách key React riêng cho từng component cùng cấp trong app.jsx để tránh nhân đôi mục đã xem khi trang cập nhật. Sau khi chép bản sửa, khởi động lại Vite hoặc build lại, đóng tab cũ rồi mở lại và Ctrl+F5. Không cần xóa lịch sử, sửa .env hoặc migration bổ sung. Kiểm thử App qua 5 vòng modal, đổi tài khoản và xóa lịch sử đều đạt, không có cảnh báo key trùng.
 
