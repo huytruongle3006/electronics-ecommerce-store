@@ -1,36 +1,59 @@
-# CÁCH CHẠY TECHSTORE
+# Cách chạy TECHSTORE — bản thông báo trong website
 
-## Nếu bạn đang chạy bản cũ và chỉ muốn thêm sổ địa chỉ
+## Cập nhật khi bạn đang dùng bản sổ địa chỉ đã sửa lỗi
 
-1. Giải nén gói `electronics-store-addresses-fixed-update-only.zip` và chép các file/thư mục bên trong vào đúng thư mục dự án có `artisan`. Giữ đúng đường dẫn và cho phép thay thế file cũ. Gói cập nhật dành cho bản đã có menu mới, giỏ khách, Gmail, đánh giá, đổi trả, bảo hành và kho như bạn đang dùng. Nếu code của nhóm đã sửa thêm các file đó, so sánh trước khi chép đè.
-2. Giữ nguyên `.env`, APP_KEY và database đang dùng. Không nhập lại SQL và không tạo lại khóa ứng dụng.
-3. Ở terminal VS Code tại thư mục có `artisan`, chạy:
+1. Giải nén `electronics-store-notifications-update-only.zip`. Chép các file/thư mục bên trong vào đúng thư mục dự án có `artisan`, đồng ý thay thế file cũ. Gói này cần bản đã có tài khoản/Gmail, giỏ khách, kho, đổi trả, bảo hành, đánh giá và sổ địa chỉ. Nếu nhóm đã sửa thêm cùng file thì so sánh trước khi ghi đè.
+2. Giữ nguyên `.env`, APP_KEY, database MySQL và Gmail đang chạy được. Không nhập lại SQL.
+3. Mở Terminal trong VS Code tại thư mục có `artisan`, chạy từng lệnh:
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping_addresses_table.php
+php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_notifications_table.php
 php artisan optimize:clear
 ```
 
-4. Khởi động lại PHP nếu đang chạy. Mở hai terminal: `php artisan serve` và `npm.cmd run dev`. Hoặc chạy `npm.cmd run build` nếu dùng giao diện đã build.
-5. Mở http://localhost:8000 và nhấn Ctrl+F5. Vào nút tài khoản → Tài khoản của tôi → **Sổ địa chỉ**.
+Migration chỉ tạo bảng `store_notifications`. Chạy migration trước khi để admin cập nhật đơn hoặc hồ sơ.
 
-Không cần thay thông tin kết nối database hay Gmail. Migration mới chỉ tạo bảng `shipping_addresses`.
+4. Khởi động lại website, dùng hai terminal:
 
-### Cách sử dụng và kiểm tra sổ địa chỉ
+```powershell
+php artisan serve
+```
 
-- Thêm địa chỉ với tên gợi nhớ, tên người nhận, số điện thoại, địa chỉ đầy đủ. Địa chỉ đầu tiên tự làm mặc định; mỗi tài khoản lưu tối đa 20 địa chỉ.
-- Thêm địa chỉ thứ hai rồi chọn **Đặt mặc định**. Mỗi tài khoản luôn chỉ có một mặc định nếu còn địa chỉ.
-- Sửa thông tin, thử hủy chỉnh sửa; thử xóa rồi chọn Giữ địa chỉ hoặc Xác nhận xóa. Xóa mặc định sẽ chuyển sang địa chỉ còn lại được lưu sớm nhất.
-- Thêm sản phẩm vào giỏ và thanh toán: địa chỉ mặc định được điền sẵn, có thể chọn địa chỉ khác hoặc chọn **Nhập địa chỉ khác (không lưu)**. Có thể quản lý địa chỉ ngay trong màn hình thanh toán.
-- Khi đang sửa địa chỉ, hoàn tất lưu hoặc hủy chỉnh sửa trước khi đặt hàng.
-- Đặt một đơn COD bằng địa chỉ đã lưu, sau đó sửa hoặc xóa địa chỉ. Mở lại đơn: tên, số điện thoại và địa chỉ nhận hàng trên đơn phải giữ nguyên.
-- Đăng nhập tài khoản khác để kiểm tra sổ địa chỉ riêng biệt. Không có thay đổi tự động với trường địa chỉ hồ sơ cũ; trường đó chỉ là dữ liệu gợi ý khi nhập địa chỉ thủ công.
+```powershell
+npm.cmd run dev
+```
+
+Nếu dùng giao diện build thì chạy `npm.cmd run build` thay cho việc giữ Vite chạy. Nhấn Ctrl+F5 ở trình duyệt.
+
+## Cách sử dụng thông báo
+
+- Đăng nhập user, chuông thông báo xuất hiện cạnh giỏ hàng và tài khoản. Khách chưa đăng nhập không thấy chuông.
+- Admin xác nhận/đổi trạng thái/hủy đơn sẽ tạo thông báo cho chủ đơn. Trạng thái cũ không đổi hoặc thao tác thất bại không sinh thông báo.
+- Admin duyệt/từ chối/nhận hàng/ghi nhận hoàn tiền sẽ thông báo cho chủ đơn.
+- Admin cấp serial, thay đổi trạng thái bảo hành hoặc tiếp nhận/từ chối/sửa chữa/sẵn sàng trả/đóng hồ sơ bảo hành sẽ thông báo cho user liên quan. Phiếu bảo hành cũ không gắn với đơn có chủ tài khoản không thể gửi cho user.
+- Chuông cập nhật mỗi 20 giây khi tab đang hiển thị; khi quay lại tab/cửa sổ hoặc bấm mở chuông sẽ tải lại. Có thể bấm Tải lại để xem ngay. Không cần cài WebSocket, không cần worker hàng đợi.
+- Bấm một thông báo để đánh dấu đã đọc và mở đúng đơn hoặc phiếu bảo hành. Đổi trả/hoàn tiền mở chi tiết đơn để xem phần yêu cầu. Phiếu bảo hành có nút Xem tất cả bảo hành để quay về danh sách.
+- Đánh dấu tất cả đã đọc chỉ xử lý những thông báo có trước lần tải đang xem; thông báo mới đến sau đó vẫn chưa đọc.
+- Thông báo lưu trong database, tải lại trang vẫn còn. Chỉ phát sinh từ thao tác admin sau khi cập nhật bản này, không gửi lại lịch sử cũ.
+
+## Test bằng hai trình duyệt
+
+1. Dùng Chrome đăng nhập user A, đặt một đơn COD và giữ trang đang mở.
+2. Mở cửa sổ ẩn danh hoặc trình duyệt khác, đăng nhập admin.
+3. Admin chuyển đơn của user A từ Chờ duyệt sang Đã xác nhận. Quay lại tab user: chuông tăng số chưa đọc trong khoảng 20 giây, hoặc bấm chuông/Tải lại.
+4. Bấm thông báo. Đúng đơn phải mở ra và số chưa đọc giảm. Tải lại trang để kiểm tra trạng thái đã đọc được lưu.
+5. Admin chuyển tiếp Đang giao rồi Hoàn tất. User nhận từng thông báo. Bấm Đánh dấu tất cả đã đọc để xóa số chưa đọc.
+6. Đăng nhập user B: không thấy thông báo hay dữ liệu của user A.
+7. Thử luồng đổi trả trên đơn đủ điều kiện, admin duyệt/từ chối hoặc ghi nhận hoàn tiền thực tế. Thử cấp serial và cập nhật hồ sơ bảo hành. Chuông phải mở đúng đơn/thiết bị.
+8. Thử bấm lại cùng trạng thái ở admin: không tạo thêm thông báo trùng. Nếu mất mạng, chuông hiển thị lỗi và có nút Tải lại sau khi mạng phục hồi.
+
+Không cần thay cấu hình Gmail vì đây là thông báo bên trong website. Nếu thấy lỗi thiếu bảng store_notifications, kiểm tra .env đang dùng DB_CONNECTION=mysql, chạy php artisan config:clear rồi chạy migration mới ở trên.
 
 ## Cài mới từ đầu
 
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-addresses-fixed-full.zip` vào một thư mục mới.
+Giải nén `electronics-store-notifications-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -117,6 +140,7 @@ php artisan migrate --path=database/migrations/2026_10_19_150000_create_warranty
 php artisan migrate --path=database/migrations/2026_10_19_180000_create_wishlist_items_table.php
 php artisan migrate --path=database/migrations/2026_10_19_230000_create_guest_cart_merges_table.php
 php artisan migrate --path=database/migrations/2026_10_26_100000_create_shipping_addresses_table.php
+php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_notifications_table.php
 php artisan optimize:clear
 ```
 
@@ -217,7 +241,3 @@ Nếu muốn dùng bản build thay vì giữ Vite chạy, thực hiện `npm.cm
 - **Access denied / Unknown database / Connection refused**: kiểm tra MySQL Server đang chạy, tên database, tên đăng nhập, mật khẩu và cổng trong `.env`, rồi chạy `php artisan optimize:clear`.
 - **Không tải được giao diện / Vite manifest not found**: chạy `npm.cmd ci`, rồi `npm.cmd run dev` ở terminal thứ hai.
 
-
-## Ban sua loi chon dia chi vua luu
-
-Luu dia chi ngay tai checkout se tu chon dia chi do va khoa ba o thong tin giao hang ben duoi. Chon Nhap dia chi khac de nhap thu cong. Ban nay da gom ban sua loi, khong can chep them goi fix rieng.

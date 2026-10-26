@@ -90,6 +90,7 @@ class AdminController extends Controller
                     'created_at' => now(),
                 ]);
             }
+            \App\Services\StoreNotifier::order($order);
             return response()->json([
                 'success' => true,
                 'message' => 'Cập nhật trạng thái đơn hàng thành công!',

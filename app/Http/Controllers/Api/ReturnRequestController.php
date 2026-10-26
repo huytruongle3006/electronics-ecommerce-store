@@ -144,6 +144,7 @@ class ReturnRequestController extends Controller
             if ($action === 'receive') $note .= $return->restocked ? ' Đã nhận đủ hàng, nhập lại kho.' : ' Đã nhận đủ hàng, không nhập lại kho bán.';
             if ($action === 'refund') $note .= ' Chứng từ hoàn tiền: ' . $return->refund_reference;
             $this->event($return, $request->user()->id, $target, trim($note));
+            \App\Services\StoreNotifier::returned($return, $order);
             return response()->json(['success' => true, 'message' => 'Đã cập nhật yêu cầu.', 'data' => $this->detail($return)]);
         }, 3);
     }

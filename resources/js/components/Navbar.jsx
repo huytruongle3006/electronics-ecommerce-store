@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, ShieldCheck, ShoppingCart, User, LogOut, Package, LayoutDashboard, Heart, MessageSquare, ChevronDown, Zap } from 'lucide-react';
 import './Navbar.css';
+import NotificationBell from './NotificationBell';
 
-export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false }) {
+export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false, onOpenNotification }) {
     const [expanded, setExpanded] = useState(false);
     const account = useRef(null), trigger = useRef(null);
     const admin = !!user && (user.is_admin || user.roles_list?.includes('ADMIN') || user.roles?.some(role => role === 'ADMIN' || role.maRole === 'ADMIN'));
@@ -22,6 +23,7 @@ export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenC
             <div className="store-header__tools">
                 <button type="button" className="store-warranty" onClick={onOpenWarranty} aria-label="Tra cứu bảo hành" title="Tra cứu bảo hành"><ShieldCheck size={20} /><span>Bảo hành</span></button>
                 <button type="button" className="store-cart" onClick={onOpenCart} aria-label={`Giỏ hàng, ${cartCount} sản phẩm`}><ShoppingCart size={21} /><span>Giỏ hàng</span><b>{cartBusy ? '…' : cartCount}</b></button>
+                {user && <NotificationBell key={user.id} onOpenNotification={onOpenNotification} />}
                 {user ? <div className="store-account" ref={account}>
                     <button ref={trigger} className="store-account__trigger" type="button" aria-expanded={expanded} aria-controls="store-account-panel" onClick={() => setExpanded(value => !value)}><span className="store-avatar">{user.full_name?.charAt(0)?.toUpperCase() || 'U'}</span><span className="store-account__name"><small>Xin chào,</small><strong>{user.full_name || 'Khách hàng'}</strong></span><ChevronDown size={16} className={expanded ? 'store-chevron--open' : ''} /></button>
                     {expanded && <div className="store-account__panel" id="store-account-panel"><div className="store-account__intro"><strong>{user.full_name}</strong><span>Tài khoản TECHSTORE của bạn</span></div><nav aria-label="Tùy chọn tài khoản">

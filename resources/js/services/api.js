@@ -129,3 +129,8 @@ export const createAddressApi = data => api.post('/addresses', data);
 export const updateAddressApi = (id, data) => api.put('/addresses/'+id, data);
 export const deleteAddressApi = id => api.delete('/addresses/'+id);
 export const defaultAddressApi = id => api.put('/addresses/'+id+'/default');
+
+export const getNotificationsApi = (page = 1) => api.get('/notifications', { params: { page } });
+export const readNotificationApi = id => api.put('/notifications/'+id+'/read');
+export const readAllNotificationsApi = through_id => api.put('/notifications/read-all', { through_id });
+export const getMyWarrantyApi = id => api.get('/warranties/my/'+id);

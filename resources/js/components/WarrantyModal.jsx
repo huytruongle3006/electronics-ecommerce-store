@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { checkWarranty, getMyWarrantiesApi, requestWarrantyServiceApi } from '../services/api';
+import { checkWarranty, getMyWarrantiesApi, getMyWarrantyApi, requestWarrantyServiceApi } from '../services/api';
 import { warrantyLabels, warrantyError, warrantyDate, ServiceTimeline } from './WarrantyShared';
 const input = { padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 8, font: 'inherit', boxSizing: 'border-box', maxWidth: '100%' };
 const button = { ...input, background: '#fff', cursor: 'pointer' };
 const primary = { ...button, background: '#2563eb', border: '1px solid #2563eb', color: '#fff' };
-export default function WarrantyModal({ isOpen, onClose, user }) {
-    return isOpen ? <WarrantyContent key={user?.id || 'guest'} onClose={onClose} user={user} /> : null;
+export default function WarrantyModal({ isOpen, onClose, user, initialWarrantyId }) {
+    return isOpen ? <WarrantyContent key={(user?.id || 'guest') + ':' + (initialWarrantyId || '')} onClose={onClose} user={user} initialWarrantyId={initialWarrantyId} /> : null;
 }
-function WarrantyContent({ onClose, user }) {
-    const [tab, setTab] = useState('lookup');
+function WarrantyContent({ onClose, user, initialWarrantyId }) {
+    const [tab, setTab] = useState(initialWarrantyId ? 'mine' : 'lookup');
+    const [focusId, setFocusId] = useState(initialWarrantyId || null);
     const [serial, setSerial] = useState(''); const [result, setResult] = useState(null);
     const [rows, setRows] = useState([]); const [page, setPage] = useState(1); const [lastPage, setLastPage] = useState(1);
     const [loading, setLoading] = useState(false); const [busy, setBusy] = useState(false);
@@ -23,10 +24,10 @@ function WarrantyContent({ onClose, user }) {
     useEffect(() => {
         if (tab !== 'mine' || !user) return;
         let active = true; setLoading(true); setError('');
-        getMyWarrantiesApi(page).then(({ data }) => { if (active) { setRows(data.data.data); setLastPage(data.data.last_page); } })
+        (focusId ? getMyWarrantyApi(focusId) : getMyWarrantiesApi(page)).then(({ data }) => { if (active) { setRows(focusId ? [data.data] : data.data.data); setLastPage(focusId ? 1 : data.data.last_page); } })
             .catch(err => { if (active) setError(warrantyError(err)); }).finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [tab, page, reload, user]);
+    }, [tab, page, reload, user, focusId]);
     const lookup = async event => {
         event.preventDefault(); if (busy) return; setBusy(true); setError(''); setResult(null);
         try { const { data } = await checkWarranty(serial.trim()); setResult(data.data); }
@@ -57,6 +58,7 @@ function WarrantyContent({ onClose, user }) {
                 {result && <div style={{ padding: 16, border: '1px solid #cbd5e1', marginTop: 16, borderRadius: 10 }}><strong>{result.product_name}</strong><p>Serial: {result.serial_number}</p><p>Từ {warrantyDate(result.start_date)} đến hết ngày {warrantyDate(result.end_date)}</p><strong>{warrantyLabels[result.effective_status] || 'Liên hệ cửa hàng'}</strong></div>}
                 {!user && <p style={{ color: '#64748b' }}>Đăng nhập để xem thiết bị của bạn và gửi yêu cầu bảo hành.</p>}
             </> : loading ? <p role="status">Đang tải bảo hành...</p> : <>
+                {focusId && <button type="button" style={button} disabled={busy} onClick={() => { setFocusId(null); setPage(1); }}>Xem tất cả bảo hành</button>}
                 <button type="button" style={button} disabled={busy} onClick={() => setReload(value => value + 1)}>Tải lại danh sách</button>
                 {!rows.length && <p>Chưa có phiếu bảo hành liên kết với đơn của bạn. Nếu đã nhận hàng, liên hệ cửa hàng để cấp serial.</p>}
                 {rows.map(warranty => <article key={warranty.id} style={{ padding: 16, border: '1px solid #e2e8f0', borderRadius: 10, marginTop: 14 }}>

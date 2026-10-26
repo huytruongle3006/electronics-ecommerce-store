@@ -40,6 +40,10 @@ Route::post('/warranties/check', [WarrantyController::class, 'check'])->middlewa
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::put('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'readAll']);
+    Route::put('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'read'])->whereNumber('id');
+    Route::get('/warranties/my/{id}', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'mineDetail'])->whereNumber('id');
     // Thông tin tài khoản
     Route::get('/profile', [AuthController::class, 'profile']);
     Route::put('/profile', [ProfileController::class, 'update']);

@@ -5,12 +5,12 @@ import { cancellationNote } from '../utils/orderStatus';
 import ReturnRequestPanel from './ReturnRequestPanel';
 import OrderProductReview from './OrderProductReview';
 
-export default function MyOrdersModal({ isOpen, onClose, onOrderChanged }) {
+export default function MyOrdersModal({ isOpen, onClose, onOrderChanged, initialOrderId }) {
   if (!isOpen) return null;
-  return <MyOrdersContent onClose={onClose} onOrderChanged={onOrderChanged} />;
+  return <MyOrdersContent initialOrderId={initialOrderId} onClose={onClose} onOrderChanged={onOrderChanged} />;
 }
 
-function MyOrdersContent({ onClose, onOrderChanged }) {
+function MyOrdersContent({ onClose, onOrderChanged, initialOrderId }) {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +31,8 @@ function MyOrdersContent({ onClose, onOrderChanged }) {
       const res = await getMyOrdersApi();
       if (res.data.success) {
         setOrders(res.data.data || []);
-        setSelectedOrder(current => current ? (res.data.data || []).find(order => order.id === current.id) || null : null);
+        setSelectedOrder(current => (res.data.data || []).find(order => order.id === (current?.id || initialOrderId)) || null);
+        if (initialOrderId && !(res.data.data || []).some(order => order.id === initialOrderId)) setError('Đơn hàng trong thông báo không còn tồn tại hoặc không thuộc tài khoản của bạn.');
       }
     } catch (err) {
       setError(err.response?.status === 401 ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' : 'Không tải được đơn hàng. Vui lòng thử lại.');

@@ -19,6 +19,7 @@ abstract class AccountTestCase extends TestCase
         // Use an isolated, in-memory schema matching the account fields; never touch MySQL.
         config(['database.default' => 'sqlite', 'database.connections.sqlite.database' => ':memory:']);
         app('db')->purge('sqlite');
+        (require __DIR__.'/../../database/migrations/2026_10_26_140000_create_store_notifications_table.php')->up();
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('maUser')->unique();

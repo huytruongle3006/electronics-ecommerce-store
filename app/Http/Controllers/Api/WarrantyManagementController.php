@@ -26,6 +26,14 @@ class WarrantyManagementController extends Controller
         return response()->json(['success' => true, 'data' => $rows]);
     }
 
+    public function mineDetail(Request $request, int $id, WarrantyPolicy $policy)
+    {
+        $row = Warranty::with(['product:id,tenSP', 'order:id,maDH,status', 'serviceRequests.events'])
+            ->whereHas('order', fn ($q) => $q->where('user_id', $request->user()->id))->findOrFail($id);
+        $row->setAttribute('effective_status', $policy->effectiveStatus($row));
+        return response()->json(['data' => $row]);
+    }
+
     public function index(Request $request, WarrantyPolicy $policy)
     {
         $data = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
@@ -157,11 +165,13 @@ class WarrantyManagementController extends Controller
 
     private function auditWarranty(int $id, int $actor, string $action, string $note): void
     {
-        DB::table('warranty_events')->insert(['warranty_id' => $id, 'actor_id' => $actor, 'action' => $action, 'note' => $note, 'created_at' => now()]);
+        $eventId = DB::table('warranty_events')->insertGetId(['warranty_id' => $id, 'actor_id' => $actor, 'action' => $action, 'note' => $note, 'created_at' => now()]);
+        \App\Services\StoreNotifier::warranty(Warranty::findOrFail($id), $eventId, $action);
     }
 
     private function auditService(int $id, int $actor, string $action, string $note): void
     {
         WarrantyServiceEvent::create(['warranty_service_request_id' => $id, 'actor_id' => $actor, 'action' => $action, 'note' => $note, 'created_at' => now()]);
+        if ($action !== 'requested') \App\Services\StoreNotifier::service(WarrantyServiceRequest::findOrFail($id));
     }
 }

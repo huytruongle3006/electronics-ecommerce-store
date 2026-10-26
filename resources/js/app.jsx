@@ -66,6 +66,7 @@ function App() {
 
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isWarrantyOpen, setIsWarrantyOpen] = useState(false);
+    const [notificationTarget, setNotificationTarget] = useState(null);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
@@ -211,13 +212,20 @@ function App() {
                 cartBusy={cart.busy}
                 cartCount={totalCount}
                 onOpenCart={() => setIsCartOpen(true)}
-                onOpenWarranty={() => setIsWarrantyOpen(true)}
+                onOpenWarranty={() => { setNotificationTarget(null); setIsWarrantyOpen(true); }}
                 onResetFilter={() => { setSelectedCategory('ALL'); setSearchQuery(''); }}
                 user={currentUser}
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onLogout={handleLogout}
                 onOpenMyReviews={() => setIsMyReviewsOpen(true)}
-                onOpenOrders={() => setIsOrdersOpen(true)}
+                onOpenOrders={() => { setNotificationTarget(null); setIsOrdersOpen(true); }}
+                onOpenNotification={notification => {
+                    setIsAccountOpen(false); setIsWishlistOpen(false); setIsMyReviewsOpen(false);
+                    setIsCheckoutOpen(false); setSelectedProductId(null);
+                    setNotificationTarget({ ...notification, owner_id: currentUser.id });
+                    if (notification.target_type === 'warranty') { setIsOrdersOpen(false); setIsWarrantyOpen(true); }
+                    else { setIsWarrantyOpen(false); setIsOrdersOpen(true); }
+                }}
                 onOpenAccount={() => setIsAccountOpen(true)}
                 onOpenAdmin={() => setIsAdminView(true)}
             />
@@ -313,6 +321,7 @@ function App() {
             {/* Modal Tra cứu Bảo hành */}
             <WarrantyModal
                 isOpen={isWarrantyOpen}
+                initialWarrantyId={notificationTarget?.owner_id === currentUser?.id && notificationTarget?.target_type === 'warranty' ? notificationTarget.target_id : null}
                 user={currentUser}
                 onClose={() => setIsWarrantyOpen(false)}
             />
@@ -361,7 +370,8 @@ function App() {
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onAddToCart={addToCart}
             />}
-            <MyOrdersModal
+            <MyOrdersModal key={(currentUser?.id || 'guest') + ':' + (notificationTarget?.id || '')}
+                initialOrderId={notificationTarget?.owner_id === currentUser?.id && notificationTarget?.target_type === 'order' ? notificationTarget.target_id : null}
                 isOpen={isOrdersOpen}
                 onOrderChanged={() => {
                     getProducts().then(res => setProducts(res.data.data?.data || res.data.data || []))
