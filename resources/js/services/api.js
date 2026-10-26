@@ -137,3 +137,7 @@ export const getMyWarrantyApi = id => api.get('/warranties/my/'+id);
 
 export const getAdvisorOptionsApi = (signal) => api.get('/advisor/options', { signal });
 export const askProductAdvisorApi = (data, signal) => api.post('/advisor/chat', data, { signal, timeout: 27000 });
+
+export const getRebuyPreviewApi = id => api.get('/orders/'+id+'/rebuy', { timeout: 15000 });
+export const rebuyOrderApi = (id, data) => api.post('/orders/'+id+'/rebuy', data, { timeout: 20000 });
+export const getRecentlyViewedApi = (ids, signal) => api.post('/products/recently-viewed', { ids }, { signal, timeout: 12000 });

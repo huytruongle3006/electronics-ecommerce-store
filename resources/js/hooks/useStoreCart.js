@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getCartApi, addToCartApi, updateCartItemApi, removeCartItemApi, mergeGuestCartApi } from '../services/api';
+import { getCartApi, addToCartApi, updateCartItemApi, removeCartItemApi, mergeGuestCartApi, rebuyOrderApi } from '../services/api';
 
 export const GUEST_CART_KEY = 'techstore_guest_cart_v1';
 const uuid = () => globalThis.crypto?.randomUUID?.() || '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (Number(c) ^ (globalThis.crypto?.getRandomValues(new Uint8Array(1))[0] ?? Math.floor(Math.random() * 256)) & 15 >> Number(c) / 4).toString(16));
@@ -87,6 +87,21 @@ export default function useStoreCart(user) {
         } catch (error) { if (valid()) setState(previous => ({ ...previous, busy: false, error: message(error) })); return false; }
         finally { if (valid()) pending.current = false; }
     };
+    const rebuy = async (orderId, data) => {
+        if (!owner || ownerRef.current !== owner || pending.current) return { success: false, message: 'Giỏ hàng đang đồng bộ. Vui lòng thử lại sau.' };
+        pending.current = true; const current = ++sequence.current;
+        const valid = () => ownerRef.current === owner && sequence.current === current;
+        setState(previous => ({ ...previous, busy: true, error: '' }));
+        try {
+            const response = await rebuyOrderApi(orderId, data);
+            if (!valid()) return { success: false, message: 'Tài khoản đã thay đổi.' };
+            setState(previous => ({ ...previous, items: response.data.items || [], busy: false, info: response.data.message }));
+            return response.data;
+        } catch (error) {
+            if (valid()) setState(previous => ({ ...previous, busy: false, error: message(error) }));
+            return { success: false, status: error.response?.status || 0, message: error.response?.data?.message || 'Mất kết nối. Gửi lại cùng yêu cầu để kiểm tra kết quả, không thêm trùng.' };
+        } finally { if (valid()) pending.current = false; }
+    };
     const add = async (product, quantity = 1) => {
         if (!Number.isInteger(quantity) || quantity < 1) return false;
         if (owner) return transact(() => addToCartApi(product.id, quantity));
@@ -116,7 +131,7 @@ export default function useStoreCart(user) {
         persist({ ...empty(), items: guestRef.current.items.map(row => row.id === id ? { ...row, quantity } : row) });
     };
     const visible = state.owner === owner ? state : { items: [], busy: !!owner, error: '', info: '' };
-    return { ...visible, items: owner ? visible.items : guest.merge_owner ? [] : guest.items, load, add, update, remove,
+    return { ...visible, items: owner ? visible.items : guest.merge_owner ? [] : guest.items, load, add, rebuy, update, remove,
         remaining: owner && guest.merge_owner === owner ? guest.items : [],
         discardRemaining: () => { if (!pending.current) persist(empty()); },
     };

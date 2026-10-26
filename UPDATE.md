@@ -1,83 +1,78 @@
-# Cập nhật trợ lý AI chọn sản phẩm dùng Gemini Flash-Lite
+# Thêm mua lại đơn cũ và sản phẩm đã xem gần đây
 
-## Chức năng đã bổ sung và hoàn thiện
+## Chức năng
 
-- Tư vấn theo nhu cầu, ngân sách và danh mục, chỉ lấy sản phẩm đang mở bán và còn hàng trong database.
-- Dùng Gemini API ở backend; mặc định gemini-3.5-flash-lite với thinking MINIMAL. Không tự dùng MINIMAL cho các model không hỗ trợ.
-- Đề xuất tối đa 3 sản phẩm từ nhóm tối đa 16 ứng viên; giá/tồn kho/thông số hiển thị do backend xác minh, không lấy thông tin tự do do AI viết.
-- Có xem chi tiết và thêm sản phẩm vào giỏ; tải lại giá và tình trạng hàng trước khi thêm.
-- Gộp thành tối đa 1 request Gemini mỗi lượt, rút gọn dữ liệu, cache quyết định hợp lệ 90 giây. Đổi hội thoại/bộ lọc/model/catalog làm thay khóa cache; kiểm tra lại sản phẩm trước khi trả kết quả.
-- Timeout API 18 giây, timeout phía frontend 27 giây và watchdog 30 giây để mở lại ô nhập, có bộ đếm thời gian. Không tự lặp request khi bị lỗi/quota.
-- Hiển thị mã HTTP/mã trạng thái an toàn cho lỗi upstream chưa phân loại; không in key hoặc nguyên lỗi nhà cung cấp.
-- Mỗi model/project vẫn chịu quota Gemini riêng; mặc định giới hạn ứng dụng 80 lần gọi/24h và 5 yêu cầu/phút/IP.
+- Mua lại từ chi tiết đơn của chính user, xem trước giá/tồn kho hiện tại, chọn món và giảm số lượng khi cần.
+- Tính cả số lượng có sẵn trong giỏ; báo hết hàng, ngừng bán, đã xóa hoặc không đủ số lượng.
+- Kiểm tra lại giá và tồn kho khi xác nhận. Toàn bộ lần thêm rollback nếu một dòng không còn hợp lệ.
+- Mã UUID và biên nhận server chống cộng trùng khi gửi lại cùng yêu cầu sau mất mạng. Dữ liệu yêu cầu chờ lưu trong sessionStorage theo tài khoản/đơn.
+- Chỉ thêm vào giỏ, không tạo đơn/thanh toán, không thay đổi đơn cũ hay trừ kho, không áp lại voucher/địa chỉ cũ.
+- Sản phẩm đã xem gần đây: 12 mục, mới nhất trước, không trùng, tách riêng khách và từng tài khoản trên cùng trình duyệt.
+- Chỉ lưu id/thời gian tại localStorage. Server trả dữ liệu sản phẩm công khai hiện tại; mục ngừng bán/đã xóa là placeholder có thể bỏ.
+- Có mở chi tiết, thêm giỏ theo dữ liệu mới nhất, xóa từng mục hoặc xóa bucket hiện tại với xác nhận. Không đọc lịch sử giữa các thiết bị và không gửi lịch sử sang AI.
 
-## File trong gói GitHub (12 file)
+## File thay đổi so với bản Gemini Flash-Lite mới nhất
 
-Gói này chứa toàn bộ phần AI cập nhật so với source bản thông báo đã giao, dùng được khi repository đã có bản thông báo hoặc AI cũ. Không chứa lại tất cả tính năng trước đó; dùng đúng nền source và so sánh nếu nhóm đã chỉnh cùng file. So với bản thông báo: thêm 6 file và sửa 6 file, không xóa file.
+Thêm 7 file, sửa 8 file, không xóa file nào.
 
-### File mới so với bản thông báo
+### File mới
 
-- `app/Http/Controllers/Api/ProductAdvisorController.php`
-- `app/Services/ProductAdvisor.php`
-- `config/product_advisor.php`
-- `resources/js/components/ProductAdvisor.jsx`
-- `resources/js/components/ProductAdvisor.css`
-- `tests/Feature/ProductAdvisorTest.php`
+- `app/Http/Controllers/Api/OrderRebuyController.php`
+- `app/Http/Controllers/Api/RecentlyViewedController.php`
+- `database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php`
+- `resources/js/components/RebuyPanel.jsx`
+- `resources/js/components/RecentlyViewed.jsx`
+- `resources/js/hooks/useRecentlyViewed.js`
+- `tests/Feature/RebuyRecentTest.php`
 
-### File đã sửa so với bản thông báo
+### File sửa
 
-- `.env.example`
 - `resources/js/app.jsx`
+- `resources/js/components/MyOrdersModal.jsx`
+- `resources/js/components/ProductDetailModal.jsx`
+- `resources/js/hooks/useStoreCart.js`
 - `resources/js/services/api.js`
 - `routes/api.php`
 - `HUONG_DAN_CHAY.md`
 - `UPDATE.md`
 
-## Cấu hình chạy trên máy người dùng
+## Cập nhật database
 
-Giữ nguyên database, Gmail và APP_KEY. Trong .env thật (không upload lên GitHub):
-
-```dotenv
-AI_ADVISOR_ENABLED=true
-GEMINI_API_KEY="key_gemini_cua_ban"
-GEMINI_MODEL=gemini-3.5-flash-lite
-AI_ADVISOR_DAILY_CALL_LIMIT=80
-```
+Giữ nguyên .env/MySQL/Gmail/Gemini/APP_KEY. Chạy:
 
 ```powershell
+php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
 php artisan optimize:clear
 ```
 
-Khởi động lại PHP và Vite/build giao diện. Không cần migration mới cho phần AI. Hướng dẫn từ đầu có trong HUONG_DAN_CHAY.md. Key chỉ đặt ở backend, không có biến VITE_GEMINI_API_KEY.
+Khởi động lại PHP và Vite hoặc build lại. Không nhập lại SQL, không chạy migrate:fresh. Chi tiết cài mới/cập nhật/test trong HUONG_DAN_CHAY.md.
 
-## Cách đưa lên GitHub
+## Kiểm thử
 
-1. Giải nén electronics-store-gemini-github-update.zip.
-2. Mở nhánh muốn cập nhật ở thư mục gốc repository → Add file → Upload files.
-3. Kéo nội dung bên trong lên, giữ đúng app/, config/, resources/, routes/, tests/ và các file ở gốc. Không kéo cả thư mục bao bên ngoài hay upload nguyên ZIP.
-4. Kiểm tra danh sách đúng 12 file. File .env.example chỉ là mẫu không có key; tuyệt đối không đưa .env thật lên.
-5. Commit với nội dung dưới đây.
+- 142 bài backend, 1020 assertions: đạt, gồm 11 bài mới cho hai chức năng; dùng SQLite riêng, không truy cập database của bạn.
+- 7 nhóm React/jsdom mới: đạt, gồm đồng bộ giỏ, retry sau mất mạng, giá thay đổi, giới hạn lịch sử, tách tài khoản, xóa, lỗi/thử lại và phản hồi cũ sau đổi tài khoản.
+- Build giao diện đạt; còn cảnh báo Tailwind/bundle có sẵn. Chưa test MySQL và browser thực tế trên máy người dùng.
+
+## Up GitHub
+
+Giải nén update-only, upload nội dung vào đúng đường dẫn repository trên nền Gemini Flash-Lite hiện tại. So sánh nếu nhóm đã chỉnh thêm cùng file. Không upload nguyên ZIP, .env, vendor, node_modules, build, log hoặc script chẩn đoán.
 
 ### Tiêu đề commit
 
 ```text
-feat: thêm trợ lý chọn sản phẩm bằng Gemini Flash-Lite
+feat: thêm mua lại đơn cũ và sản phẩm đã xem gần đây
 ```
 
-### Mô tả commit
+### Mô tả
 
 ```text
-- Tư vấn theo nhu cầu, ngân sách và sản phẩm còn hàng trong database.
-- Dùng Gemini Flash-Lite, hỗ trợ xem chi tiết và thêm vào giỏ.
-- Tối ưu một lần gọi API, cache 90 giây và xử lý timeout.
-- Kiểm tra id, giá, tồn kho và thông số trước khi hiển thị.
-- Bổ sung cấu hình mẫu, kiểm thử và hướng dẫn chạy.
+- Mua lại từ đơn của user theo giá và tồn kho hiện tại.
+- Xem trước, chọn số lượng và chống thêm trùng khi gửi lại yêu cầu.
+- Lưu 12 sản phẩm đã xem, tách theo tài khoản và hỗ trợ xóa lịch sử.
+- Bổ sung migration, kiểm thử và hướng dẫn chạy.
 ```
 
-## Kiểm tra
+## Bản sửa lỗi lặp mục đã xem
 
-- 131 bài backend, 958 assertions: đạt; phần request Gemini dùng HTTP mock.
-- 8 nhóm React/jsdom và build giao diện: đạt; còn cảnh báo Tailwind/bundle có sẵn.
-- Người dùng đã kiểm tra yêu cầu sinh JSON nhỏ với Flash-Lite thành công, HTTP 200/STOP, 1,263 giây. Đây không phải benchmark tư vấn đầy đủ; không cam kết mọi lượt có cùng độ trễ.
+Đã tách key React riêng cho từng component cùng cấp trong app.jsx để tránh nhân đôi mục đã xem khi trang cập nhật. Sau khi chép bản sửa, khởi động lại Vite hoặc build lại, đóng tab cũ rồi mở lại và Ctrl+F5. Không cần xóa lịch sử, sửa .env hoặc migration bổ sung. Kiểm thử App qua 5 vòng modal, đổi tài khoản và xóa lịch sử đều đạt, không có cảnh báo key trùng.
 
-Không đóng gói .env, key thật, vendor, node_modules, build, log hoặc các script chẩn đoán cục bộ. Không có thao tác upload/commit nào được thực hiện tự động.

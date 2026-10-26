@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { getProductDetail } from '../services/api';
 
-export default function ProductDetailModal({ productId, isOpen, onClose, onAddToCart, user, onOpenAuth, isFavorite, favoriteBusy, onToggleFavorite }) {
+export default function ProductDetailModal({ productId, isOpen, onClose, onAddToCart, user, onOpenAuth, isFavorite, favoriteBusy, onToggleFavorite, onViewed }) {
 
 
     const [product, setProduct] = useState(null);
@@ -20,11 +20,11 @@ export default function ProductDetailModal({ productId, isOpen, onClose, onAddTo
         let active = true;
         setLoading(true); setLoadError(''); setQuantity(1); setProduct(null);
         setReviewsData({ avg_rating: 0, total_reviews: 0, loaded: false });
-        getProductDetail(productId).then(response => { if (active) setProduct(response.data.data); })
+        getProductDetail(productId).then(response => { if (active) { setProduct(response.data.data); onViewed?.(response.data.data); } })
             .catch(() => { if (active) setLoadError('Không tải được sản phẩm. Vui lòng đóng và thử lại.'); })
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
-    }, [productId, isOpen]);
+    }, [productId, isOpen, onViewed]);
 
     if (!isOpen || !productId) return null;
 

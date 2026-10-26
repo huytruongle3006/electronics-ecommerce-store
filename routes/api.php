@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\AdminController;
 */
 Route::get('/advisor/options', [\App\Http\Controllers\Api\ProductAdvisorController::class, 'options'])->middleware('throttle:30,1');
 Route::post('/advisor/chat', [\App\Http\Controllers\Api\ProductAdvisorController::class, 'chat'])->middleware('throttle:5,1');
+Route::post('/products/recently-viewed', [\App\Http\Controllers\Api\RecentlyViewedController::class, 'index'])->middleware('throttle:60,1');
 // Xác thực
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -71,6 +72,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/cart/items/{id}', [CartController::class, 'updateQuantity']);
     Route::delete('/cart/items/{id}', [CartController::class, 'removeItem']);
 
+    Route::get('/orders/{id}/rebuy', [\App\Http\Controllers\Api\OrderRebuyController::class, 'preview'])->whereNumber('id');
+    Route::post('/orders/{id}/rebuy', [\App\Http\Controllers\Api\OrderRebuyController::class, 'store'])->whereNumber('id')->middleware('throttle:10,1');
     // Đơn hàng & Checkout
     Route::post('/checkout', [OrderController::class, 'checkout']);
     Route::get('/orders/my-orders', [OrderController::class, 'myOrders']);

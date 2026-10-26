@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 import Navbar from './components/Navbar';
 import ProductAdvisor from './components/ProductAdvisor';
+import RecentlyViewed from './components/RecentlyViewed';
+import useRecentlyViewed from './hooks/useRecentlyViewed';
 import useStoreCart from './hooks/useStoreCart';
 import CartSyncNotice from './components/CartSyncNotice';
 import WishlistModal from './components/WishlistModal';
@@ -50,7 +52,7 @@ const checkIsAdmin = (user) => {
 
     return false;
 };
-function App() {
+export function App() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -83,6 +85,7 @@ function App() {
     });
 
     const cart = useStoreCart(currentUser);
+    const recent = useRecentlyViewed(currentUser);
     const cartItems = cart.items;
     const loadCartFromDB = cart.load, addToCart = cart.add, updateCartQty = cart.update, removeFromCart = cart.remove;
     useEffect(() => {
@@ -268,7 +271,8 @@ function App() {
                 )}
             </main>
 
-            {isAccountOpen && currentUser && <AccountModal key={currentUser.id}
+            <RecentlyViewed key={`recent:${currentUser?.id || 'guest'}`} recent={recent} cartBusy={cart.busy} onAddToCart={addToCart} onViewDetail={id => setSelectedProductId(id)} />
+            {isAccountOpen && currentUser && <AccountModal key={`account:${currentUser.id}`}
                 user={currentUser}
                 onClose={() => setIsAccountOpen(false)}
                 onUpdated={(updated) => {
@@ -297,7 +301,7 @@ function App() {
                     setIsAuthOpen(true);
                 }}
             />}
-            <ProductAdvisor key={currentUser?.id || 'guest'} cartBusy={cart.busy}
+            <ProductAdvisor key={`advisor:${currentUser?.id || 'guest'}`} cartBusy={cart.busy}
                 onViewProduct={id => setSelectedProductId(id)} onAddToCart={addToCart} />
             {/* Drawer Giỏ hàng */}
             <CartDrawer
@@ -343,7 +347,7 @@ function App() {
             />}
 
             {/* Modal Thanh toán Checkout */}
-            {isCheckoutOpen && currentUser && <CheckoutModal key={currentUser.id}
+            {isCheckoutOpen && currentUser && <CheckoutModal key={`checkout:${currentUser.id}`}
                 isOpen={isCheckoutOpen}
                 onClose={() => setIsCheckoutOpen(false)}
                 cartItems={cartItems}
@@ -355,14 +359,15 @@ function App() {
                     loadCartFromDB();
                 }}
             />}
-            {isMyReviewsOpen && currentUser && <MyReviewsModal key={currentUser.id}
+            {isMyReviewsOpen && currentUser && <MyReviewsModal key={`reviews:${currentUser.id}`}
                 onClose={() => setIsMyReviewsOpen(false)}
                 onViewProduct={id => { setIsMyReviewsOpen(false); setSelectedProductId(id); }} />}
-            {isWishlistOpen && currentUser && <WishlistModal key={currentUser.id} wishlist={wishlist}
+            {isWishlistOpen && currentUser && <WishlistModal key={`wishlist:${currentUser.id}`} wishlist={wishlist}
                 onClose={() => setIsWishlistOpen(false)}
                 onViewDetail={id => { setIsWishlistOpen(false); setSelectedProductId(id); }}
                 onAddToCart={addToCart} />}
-            {selectedProductId && <ProductDetailModal key={selectedProductId}
+            {selectedProductId && <ProductDetailModal key={`detail:${currentUser?.id || 'guest'}:${selectedProductId}`}
+                onViewed={recent.record}
                 isFavorite={wishlist.has(selectedProductId)}
                 favoriteBusy={!!currentUser && (wishlist.loading || wishlist.busy || !!wishlist.error)}
                 onToggleFavorite={toggleFavorite}
@@ -373,7 +378,9 @@ function App() {
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onAddToCart={addToCart}
             />}
-            <MyOrdersModal key={(currentUser?.id || 'guest') + ':' + (notificationTarget?.id || '')}
+            <MyOrdersModal key={`orders:${currentUser?.id || 'guest'}:${notificationTarget?.id || ''}`}
+                userId={currentUser?.id} onRebuy={cart.rebuy} cartBusy={cart.busy}
+                onOpenCart={() => { setIsOrdersOpen(false); setIsCartOpen(true); }}
                 initialOrderId={notificationTarget?.owner_id === currentUser?.id && notificationTarget?.target_type === 'order' ? notificationTarget.target_id : null}
                 isOpen={isOrdersOpen}
                 onOrderChanged={() => {
