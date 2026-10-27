@@ -1,69 +1,82 @@
-# TECHSTORE — Quản lý giao hàng và thông báo cho khách
+# TECHSTORE — Hoàn thiện quản lý đơn hàng admin và in phiếu
 
-## Cập nhật từ bản mã giảm giá mới nhất
+## Cập nhật bản đang chạy
 
-1. Giải nén electronics-store-delivery-update-only.zip, chép nội dung vào gốc dự án có artisan. Giữ đúng đường dẫn và thay file cũ. Gói này cần nền bản mã giảm giá cho khách hàng đã giao; nếu nhóm sửa cùng file hãy đối chiếu trước khi thay.
-2. Giữ nguyên .env, APP_KEY, database MySQL, Gmail và Gemini. Không nhập lại SQL hoặc migrate:fresh.
-3. Tại terminal VS Code trong thư mục có artisan, chạy từng lệnh:
+Gói update-only dùng cho nền quản lý giao hàng hoặc nền in phiếu đơn hàng đã giao trước đó. Bản đầy đủ có toàn bộ các chức năng trước đây.
+
+1. Dừng Vite bằng Ctrl+C. Giải nén electronics-store-admin-orders-update-only.zip và chép nội dung vào gốc dự án có artisan. Giữ đúng đường dẫn, thay file cũ; nếu nhóm đã sửa cùng file, đối chiếu trước khi chép.
+2. Giữ nguyên .env, APP_KEY, MySQL, Gmail và Gemini. Không nhập lại SQL và không tạo lại khóa.
+3. Chạy:
 
 ```powershell
-php artisan migrate --path=database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
 php artisan optimize:clear
 ```
 
-4. Dừng/mở lại php artisan serve nếu đang chạy. Chạy npm.cmd run dev ở terminal khác, hoặc npm.cmd run build nếu dùng giao diện build. Đóng tab cũ, mở lại http://localhost:8000 rồi Ctrl+F5.
+4. Khởi động lại php artisan serve nếu đang chạy. Mở terminal khác chạy npm.cmd run dev, hoặc chạy npm.cmd run build khi dùng giao diện build. Đóng tab cũ rồi mở lại http://localhost:8000 và Ctrl+F5.
 
-Migration chỉ bổ sung các cột vào orders: carrier_name, tracking_number, estimated_delivery_date, dispatched_at, delivered_at, receipt_confirmed_at và delivery_version. Đơn cũ không bị xóa và các thời điểm chưa biết vẫn để trống. Không cần package mới, API vận chuyển hoặc cấu hình email mới.
+Bản cập nhật này không có migration mới hoặc package mới. Nền dự án cần đã có migration giao hàng 2026_10_27_100000_add_delivery_fields_to_orders.php. Nếu chưa có, xem phần cài mới bên dưới; không chạy migrate:fresh trên dữ liệu đang dùng.
 
-## Admin sử dụng
+## Lỗi cũ đã sửa
 
-1. Trang quản trị → Đơn hàng → xác nhận đơn đang chờ duyệt.
-2. Mở Chi tiết đơn. Ở Quản lý giao hàng, nhập đơn vị vận chuyển, mã vận đơn và ngày giao dự kiến.
-3. Bấm Lưu vận chuyển và thông báo. Khách nhận thông báo trong website kèm đơn vị, mã và ngày dự kiến. Lưu lại thông tin y hệt không tạo thêm thông báo/lịch sử.
-4. Khi thực sự bàn giao hàng, chuyển trạng thái ở danh sách đơn sang Đang giao. Hệ thống ghi thời điểm bắt đầu giao và gửi thông báo trạng thái kèm thông tin vận chuyển.
-5. Nếu cần sửa đơn vị/mã/ngày dự kiến trong lúc đang giao, mở lại chi tiết, sửa và lưu. Mỗi lần thay đổi thành công tạo một thông báo mới cho đúng chủ đơn.
-6. Ngày dự kiến mới phải từ hôm nay theo giờ Việt Nam. Mã tối đa 100 ký tự, chỉ chữ/số/dấu chấm/gạch ngang/gạch dưới/gạch chéo. Tên đơn vị tối đa 100 ký tự.
-7. Chỉ sửa thông tin vận chuyển của đơn confirmed hoặc shipping. Đơn cancelled/completed không được sửa. Nếu có người khác cập nhật đồng thời, hệ thống báo xung đột; bấm Tải lại thông tin vận chuyển rồi sửa trên bản mới.
-8. Admin vẫn có thể chuyển đơn shipping sang completed theo luồng cũ, ghi thời điểm hệ thống xác nhận giao thành công và gửi thông báo. Trường xác nhận của khách vẫn trống nếu khách chưa thực hiện xác nhận.
+AdminDashboard trước đây tự hiển thị một bảng đơn hàng cũ, không sử dụng OrderManagement đã có nút in/chi tiết. Đã bỏ bảng trùng đó và nối tab Đơn hàng tới đúng màn hình quản lý mới. Kiểm thử mới đi từ AdminDashboard thực tế, không chỉ kiểm tra component riêng.
 
-Luồng đổi trạng thái cũ vẫn hỗ trợ đơn chưa có thông tin vận chuyển để tương thích dữ liệu trước đây. Nên nhập thông tin trước khi chuyển Đang giao. Lưu vận đơn không tự đổi trạng thái hay tự tạo vận đơn bên hãng vận chuyển.
+## Cách dùng
 
-## Khách hàng sử dụng
+### Danh sách đơn hàng
 
-- Menu tài khoản → Đơn hàng của tôi → mở chi tiết đơn.
-- Xem đơn vị vận chuyển, mã vận đơn, ngày giao dự kiến và các thời điểm đã ghi nhận. Ngày chỉ là dự kiến, thông tin do cửa hàng nhập; chưa kết nối tra cứu hành trình trực tiếp với hãng vận chuyển.
-- Khi đơn đang giao và đã nhận đủ hàng, bấm Đã nhận hàng → đọc xác nhận → Xác nhận đã nhận hàng.
-- Đơn chuyển sang Hoàn tất, lưu thời điểm ghi nhận giao thành công và thời điểm khách xác nhận; có thông báo trong website. Đây là thời điểm hệ thống ghi nhận xác nhận, không tự suy ra thời điểm giao thực tế từ hãng vận chuyển.
-- Nút chỉ có ở đơn shipping của chính tài khoản. Không được xác nhận cho đơn người khác hoặc đơn chờ duyệt/đã hủy/đã hoàn tất bởi admin. Nếu server đã nhận xác nhận của khách, gửi lại yêu cầu chỉ trả kết quả cũ, không tạo lịch sử/thông báo mới.
-- Nút Tải lại giao hàng tải dữ liệu server mới nhất. Nếu mất mạng sau khi bấm xác nhận, dùng nút này để biết server đã hoàn tất chưa; có thể gửi lại cùng thao tác khi cần vì chuyển trạng thái được xử lý một lần.
-- Nếu admin đã hoàn tất đơn trước, tải lại đơn: thời điểm giao thành công được hiển thị, không cần bấm nhận hàng nữa.
+- Đăng nhập admin → Đơn hàng. Mỗi dòng có nút Chi tiết đơn và In phiếu nhìn thấy ngay trong cột Thao tác.
+- Tìm theo mã đơn, tên người nhận, điện thoại, email/tên tài khoản hoặc mã vận đơn. Bấm Áp dụng bộ lọc.
+- Lọc trạng thái đơn, trạng thái thanh toán, ngày đặt từ/đến theo ngày Việt Nam. Có phân trang Trước/Sau, làm mới và xóa bộ lọc.
+- Khi lỗi mạng có thông báo và nút thử lại; kết quả tải cũ không ghi đè kết quả bộ lọc mới.
+- Tại Tổng quan, bấm mã trong Đơn Hàng Mới Nhận cũng mở đúng chi tiết đơn.
 
-Xác nhận nhận hàng KHÔNG thay trạng thái thu tiền COD/thanh toán, KHÔNG trừ thêm kho, không cộng lại lượt voucher và không tự hoàn tiền. Quy trình xác nhận thu COD và đổi trả/bảo hành hiện có được giữ lại. Thời gian hoàn tất dùng delivered_at nếu có; đơn cũ tiếp tục dùng lịch sử hoàn tất như trước.
+### Chi tiết đơn hàng
 
-## Thông báo cho user
+- Nút Chi tiết đơn tải dữ liệu mới từ server theo id, không chỉ dùng lại bản trong danh sách.
+- Có tài khoản đặt hàng, email/điện thoại tài khoản, người nhận, số điện thoại, địa chỉ và ghi chú riêng.
+- Có sản phẩm, mã sản phẩm, số lượng, đơn giá đã đặt, thành tiền đã lưu; sản phẩm đã gỡ có dòng thay thế.
+- Có tạm tính, giảm giá, mã voucher và tổng thanh toán. Không tính lại theo giá danh mục hiện tại.
+- Có phương thức/trạng thái thanh toán, số tiền bản ghi, mã giao dịch hoặc phiếu thu và thời gian thanh toán.
+- Có quản lý vận chuyển: đơn vị, mã vận đơn, ngày dự kiến, giờ giao/xác nhận; giữ luồng gửi thông báo cho khách đang có.
+- Có lịch sử theo thời gian/id, người xử lý và ghi chú; tài khoản xử lý đã gỡ có mã id thay thế.
+- Có nút In phiếu / Lưu PDF ngay trên đầu chi tiết, nút tải lại và đóng; giao diện có vùng cuộn khi đơn nhiều dòng.
 
-- Có thông báo khi admin thêm/sửa vận chuyển, chuyển Đang giao, chuyển Hoàn tất và khi khách xác nhận nhận hàng.
-- Thông báo chỉ gửi tới tài khoản sở hữu đơn. Bấm ở chuông thông báo sẽ mở đúng chi tiết đơn, được kiểm tra quyền trên server.
-- Chuông dùng cơ chế có sẵn: tự tải khoảng 20 giây khi tab đang hiển thị, khi quay lại tab hoặc mở chuông; có nút làm mới. Đây là thông báo trong website, không phải push trên điện thoại hay email.
-- Ghi đơn/lịch sử/thông báo cùng transaction. Nếu một phần thất bại thì hoàn tác toàn bộ. Bấm lại khi trạng thái/thông tin không đổi không tạo thông báo trùng.
+### Xử lý trạng thái và COD
 
-## Test nhanh trên máy bạn
+- Chỉ hiển thị bước chuyển hợp lệ: chờ duyệt → xác nhận/hủy; xác nhận → đang giao/hủy; đang giao → hoàn tất. Đơn đã hủy/hoàn tất không được mở lại.
+- Chọn trạng thái mới rồi bấm Xác nhận cập nhật trạng thái. Hủy đơn cần nhập lý do, tối đa 200 ký tự, được ghi trong lịch sử.
+- UI gửi trạng thái đang xem để kiểm tra xung đột. Nếu admin/khách đã cập nhật trước đó, hệ thống từ chối và yêu cầu Tải lại chi tiết, không ghi đè kết quả mới.
+- Trong lúc gửi, khóa thao tác/đóng hộp thoại liên quan. Nếu mất mạng hoặc chưa biết kết quả, tải lại chi tiết trước khi xử lý lần nữa.
+- Đơn completed + COD pending có nút Xác nhận đã thu COD trong phần Thanh toán. Nhập mã phiếu thu và xác nhận đã thu đủ tiền thực tế. Sau thành công, chi tiết tải lại trạng thái và mã phiếu thu.
+- Chuyển Hoàn tất không tự đánh dấu đã thu COD. Hủy đơn/hoàn tiền và thông báo vẫn theo luồng nghiệp vụ hiện có.
 
-1. Dùng một tài khoản khách đặt đơn COD; admin xác nhận đơn.
-2. Admin nhập GHN, mã GHN-TEST-001, ngày dự kiến ngày mai rồi lưu. Khách mở chuông (hoặc đợi cập nhật), thấy thông báo và bấm để vào đúng đơn.
-3. Admin chuyển Đang giao: khách nhận thêm thông báo, thấy mã/ngày/thời gian bắt đầu giao, có nút Đã nhận hàng.
-4. Sửa mã thành GHN-TEST-002 hoặc đổi ngày dự kiến: khách thấy thông báo mới và thông tin mới sau Tải lại giao hàng. Lưu cùng dữ liệu lần nữa không được tăng số thông báo.
-5. Khách bấm Đã nhận hàng rồi chọn Chưa nhận hàng: đơn vẫn shipping. Thử lại và xác nhận: đơn completed, có giờ giao/xác nhận và thông báo hoàn tất.
-6. Tải lại hoặc gửi lại yêu cầu nhận hàng: thời gian không đổi, không có thêm lịch sử/thông báo. Kho và thanh toán COD giữ nguyên.
-7. Đăng nhập khách khác: không được xem/xác nhận đơn này. User không được truy cập API quản lý giao hàng của admin.
-8. Đơn pending/cancelled/completed không có nút nhận hàng; admin không sửa vận chuyển của đơn đã hủy/hoàn tất.
-9. Hai cửa sổ admin mở cùng đơn rồi sửa khác nhau: lần sửa sau báo xung đột và yêu cầu tải lại.
+## In phiếu / lưu PDF
+
+1. Bấm In phiếu trên dòng đơn hoặc In phiếu / Lưu PDF trong chi tiết.
+2. Tab mới tải phiếu; bấm In / Lưu PDF ở trang phiếu.
+3. Trong hộp thoại in của trình duyệt, chọn máy in hoặc Lưu dưới dạng PDF, khổ A4. Có thể tắt đầu/chân trang của trình duyệt.
+4. Nếu bị chặn popup, cho phép cửa sổ bật lên cho địa chỉ website rồi bấm lại.
+
+Gói đã kèm controller, template và các file hỗ trợ in để tránh thiếu file khi cập nhật từ nền giao hàng. Phiếu là thông tin đơn hàng, không thay hóa đơn điện tử hoặc biên nhận thu tiền. PDF được lưu qua hộp thoại in, không tải file PDF tự động từ server. Quyền admin/user vẫn được kiểm tra; không có token trong URL phiếu.
+
+## Test nhanh
+
+1. Mở admin từ ứng dụng → Đơn hàng: phải thấy Chi tiết đơn và In phiếu ở từng dòng. Kiểm tra cả khi bấm mã đơn ở Tổng quan.
+2. Mở chi tiết đơn có voucher: đối chiếu tài khoản, địa chỉ, sản phẩm, tiền giảm, thanh toán và lịch sử.
+3. Tìm một mã đơn/email/vận đơn; lọc trạng thái, ngày Việt Nam và thanh toán; sang trang kế tiếp rồi đổi lọc: quay về trang 1.
+4. Chọn chuyển trạng thái nhưng Bỏ qua: chưa đổi đơn. Xác nhận: đơn và lịch sử/thông báo cập nhật. Hủy không có lý do phải bị chặn.
+5. Hai cửa sổ mở cùng đơn; cửa sổ thứ nhất chuyển trạng thái trước, cửa sổ sau dùng trạng thái cũ phải nhận thông báo tải lại.
+6. Đơn COD đã hoàn tất nhưng chưa thu tiền: xác nhận phiếu thu, trạng thái/mã trong chi tiết phải đổi sau tải lại.
+7. In từ danh sách và chi tiết: mở đúng mã đơn, chọn In / Lưu PDF để kiểm tra bản in.
+8. User thường gọi API admin hoặc cố xem đơn không thuộc quyền: phải bị từ chối.
 
 ## GitHub và kiểm thử
 
-Gói update-only gồm 4 file mới và 11 file sửa (15 file). Giải nén rồi upload nội dung vào đúng đường dẫn repository. Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log. Nội dung commit trong UPDATE.md.
+Gói cập nhật gồm 3 file mới + 9 file sửa so với nền in phiếu, kèm 5 file hỗ trợ đã có để tương thích nền giao hàng (17 file tổng cộng). Danh sách và commit ở UPDATE.md. Upload nội dung đã giải nén, giữ đúng đường dẫn. Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log.
 
-167 bài backend / 1225 assertions đạt trên SQLite riêng, gồm 11 bài mới về giao hàng, quyền, thời điểm, thông báo, retry và rollback. 6 nhóm React/jsdom mới đạt cho admin, khách, chi tiết đơn và chuông thông báo. Production build đạt; còn cảnh báo Tailwind/bundle có sẵn. Chưa chạy trên MySQL hoặc trình duyệt thật của máy bạn. Một test bảo hành cũ được chỉnh dùng ngày theo timezone bảo hành thay vì UTC để kết quả ổn định qua nửa đêm; nghiệp vụ bảo hành không bị đổi.
+183 bài backend / 1346 assertions đạt trên SQLite riêng; gồm 8 bài mới về quyền admin, chi tiết, tìm/lọc, ngày Việt Nam, phân trang và xung đột trạng thái. 9 nhóm React/jsdom mới đạt từ AdminDashboard thực tế, gồm in ở dòng/chi tiết, mở từ Tổng quan, tìm/lọc, retry, phản hồi muộn, đổi trạng thái, hủy có lý do và COD. Production build đạt, còn cảnh báo Tailwind/bundle có sẵn.
+
+Chưa kiểm tra MySQL hoặc hộp thoại in/PDF thực tế trên máy bạn. Hãy dùng các bước test trên sau khi cập nhật.
 
 ## Cài mới từ đầu
 
@@ -71,7 +84,7 @@ Sau khi chuẩn bị .env theo các bước bên dưới, thêm cấu hình Gemi
 
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-delivery-full.zip` vào một thư mục mới.
+Giải nén `electronics-store-admin-orders-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -266,4 +279,9 @@ Nếu muốn dùng bản build thay vì giữ Vite chạy, thực hiện `npm.cm
 
 
 
+
+
+## Sửa menu admin khi cuộn
+
+Menu trái dùng sticky ở đỉnh cửa sổ, giới hạn chiều cao theo viewport. Danh mục cuộn riêng trên màn hình thấp, tiêu đề và nút Về Cửa Hàng được giữ trong khung. Chỉ sửa code AdminDashboard.jsx, không có migration. Khởi động lại Vite/build và Ctrl+F5 sau cập nhật. Build đạt; cần kiểm tra cuộn trên trình duyệt máy bạn.
 

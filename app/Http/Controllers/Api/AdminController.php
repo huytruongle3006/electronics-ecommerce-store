@@ -42,17 +42,38 @@ class AdminController extends Controller
     // 2. Danh sách tất cả đơn hàng cho Admin
     public function getOrders(Request $request)
     {
-        $status = $request->query('status');
-        $query = Order::with(['details.product', 'payment', 'user', 'histories'])->latest();
-
-        if ($status && $status !== 'all') {
-            $query->where('status', $status);
-        }
-
-        return response()->json([
-            'success' => true,
-            'data'    => $query->paginate(15)
+        $data = $request->validate([
+            'status'=>'nullable|in:all,pending,confirmed,shipping,completed,cancelled',
+            'payment_status'=>'nullable|in:all,pending,paid,refunded,failed,missing',
+            'search'=>'nullable|string|max:100','page'=>'nullable|integer|min:1|max:1000000',
+            'from'=>'nullable|date_format:Y-m-d','to'=>'nullable|date_format:Y-m-d',
         ]);
+        if (!empty($data['from']) && !empty($data['to']) && $data['to'] < $data['from']) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['to'=>'Ngày kết thúc phải từ ngày bắt đầu.']);
+        }
+        $query = Order::with(['details.product:id,maSP,tenSP','payment','user:id,full_name,email,phone','histories'])
+            ->orderByDesc('created_at')->orderByDesc('id');
+        if (!empty($data['status']) && $data['status'] !== 'all') $query->where('status',$data['status']);
+        if (!empty($data['payment_status']) && $data['payment_status'] !== 'all') {
+            if ($data['payment_status'] === 'missing') $query->whereDoesntHave('payment');
+            else $query->whereHas('payment',fn($q)=>$q->where('payment_status',$data['payment_status']));
+        }
+        $search = trim($data['search'] ?? '');
+        if ($search !== '') $query->where(function($q) use($search){
+            foreach(['maDH','recipient_name','recipient_phone','tracking_number'] as $field) $q->orWhere($field,'like','%'.$search.'%');
+            $q->orWhereHas('user',fn($u)=>$u->where('email','like','%'.$search.'%')->orWhere('full_name','like','%'.$search.'%'));
+        });
+        if (!empty($data['from'])) $query->where('created_at','>=',\Illuminate\Support\Carbon::parse($data['from'],'Asia/Ho_Chi_Minh')->startOfDay()->utc());
+        if (!empty($data['to'])) $query->where('created_at','<',\Illuminate\Support\Carbon::parse($data['to'],'Asia/Ho_Chi_Minh')->startOfDay()->addDay()->utc());
+        return response()->json(['success'=>true,'data'=>$query->paginate(15)]);
+    }
+
+    public function showOrder(int $id)
+    {
+        return response()->json(['success'=>true,'data'=>Order::with([
+            'details.product:id,maSP,tenSP','payment','user:id,full_name,email,phone',
+            'voucher:id,maVoucher','histories.changer:id,full_name',
+        ])->findOrFail($id)]);
     }
 
     // 3. Cập nhật trạng thái đơn hàng (Duyệt đơn, Đang giao, Đã giao, Hủy)
@@ -60,11 +81,14 @@ class AdminController extends Controller
     {
         $request->validate([
             'status' => 'required|in:pending,confirmed,shipping,completed,cancelled',
+            'expected_status' => 'sometimes|required|in:pending,confirmed,shipping,completed,cancelled',
+            'reason' => 'nullable|string|max:200|regex:/\S/u',
         ]);
 
         return DB::transaction(function () use ($request, $id) {
             $order = Order::whereKey($id)->lockForUpdate()->firstOrFail();
             $newStatus = $request->status;
+            abort_if($request->filled('expected_status') && $order->status !== $request->expected_status, 409, 'Trạng thái đã thay đổi ở nơi khác. Vui lòng tải lại đơn trước khi xử lý.');
             if ($order->status === $newStatus) {
                 return response()->json(['success' => true, 'message' => 'Trạng thái không đổi', 'data' => $order]);
             }
@@ -79,7 +103,7 @@ class AdminController extends Controller
                 return response()->json(['success' => false, 'message' => 'Không thể chuyển trạng thái này. Đơn đã hủy hoặc hoàn tất không được mở lại.'], 409);
             }
             if ($newStatus === 'cancelled') {
-                app(\App\Services\OrderCancellation::class)->cancelLocked($order, $request->user(), 'Quản trị viên hủy đơn.');
+                app(\App\Services\OrderCancellation::class)->cancelLocked($order, $request->user(), 'Quản trị viên hủy đơn.'.($request->filled('reason')?' Lý do: '.trim($request->reason):''));
             } else {
                 $changes = ['status' => $newStatus];
                 if ($newStatus === 'shipping' && !$order->dispatched_at) $changes['dispatched_at'] = now();

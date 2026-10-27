@@ -6,6 +6,7 @@ import ReturnRequestPanel from './ReturnRequestPanel';
 import OrderProductReview from './OrderProductReview';
 import RebuyPanel from './RebuyPanel';
 import {DeliveryReceiptPanel} from './OrderDelivery';
+import OrderPrintButton from './OrderPrintButton';
 
 export default function MyOrdersModal({ isOpen, onClose, onOrderChanged, initialOrderId, userId, onRebuy, onOpenCart, cartBusy }) {
   if (!isOpen) return null;
@@ -151,6 +152,7 @@ function MyOrdersContent({ onClose, onOrderChanged, initialOrderId, userId, onRe
               </div>}
               {['confirmed', 'shipping', 'completed'].includes(selectedOrder.status) && <p style={{ color: '#64748b', fontSize: 14 }}>Đơn đã được xử lý nên không thể tự hủy. Vui lòng liên hệ cửa hàng nếu cần hỗ trợ.</p>}
 
+              <OrderPrintButton key={`print:${selectedOrder.id}`} orderId={selectedOrder.id} disabled={rebuyBusy||cancelling||receiptBusy}/>
               <DeliveryReceiptPanel key={`delivery:${selectedOrder.id}`} order={selectedOrder} disabled={rebuyBusy||cancelling} onBusyChange={setReceiptBusy}
                 onUpdated={updated=>{setOrders(previous=>previous.map(row=>row.id===updated.id?updated:row));setSelectedOrder(updated);onOrderChanged?.();}} />
               {onRebuy && userId && <RebuyPanel key={selectedOrder.id} orderId={selectedOrder.id} userId={userId} onRebuy={onRebuy} onOpenCart={onOpenCart} cartBusy={cartBusy || cancelling || receiptBusy} onBusyChange={setRebuyBusy} />}

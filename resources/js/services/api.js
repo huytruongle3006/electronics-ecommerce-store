@@ -37,6 +37,7 @@ export const removeCartItemApi = (item_id) => api.delete(`/cart/items/${item_id}
 export const getMyOrdersApi = () => api.get('/orders/my-orders');
 export const cancelOrderApi = (id, reason) => api.post(`/orders/${id}/cancel`, { reason });
 export const getOrderDetailApi = (id) => api.get(`/orders/${id}`);
+export const getOrderPrintApi = (id, admin = false, signal) => api.get(`${admin ? '/admin' : ''}/orders/${id}/print`, {responseType:'blob',signal,timeout:15000});
 export const confirmOrderReceivedApi = (id) => api.post(`/orders/${id}/received`, {confirm_received:true}, {timeout:15000});
 export const getAdminDeliveryApi = (id) => api.get(`/admin/orders/${id}/delivery`, {timeout:12000});
 export const updateOrderDeliveryApi = (id, data) => api.put(`/admin/orders/${id}/delivery`, data, {timeout:15000});
@@ -50,11 +51,12 @@ export const submitReviewApi = (productId, data) => api.post(`/products/${produc
 
 // Admin APIs
 export const getAdminStatsApi = () => api.get('/admin/dashboard');
-export const getAdminOrdersApi = (status = 'all', search = '', page = 1) =>
-    api.get(`/admin/orders?status=${status}&search=${encodeURIComponent(search)}&page=${page}`);
+export const getAdminOrdersApi = (status = 'all', search = '', page = 1, filters = {}, signal) =>
+    api.get('/admin/orders', {params:{status,search,page,...filters},signal,timeout:15000});
+export const getAdminOrderApi = (id, signal) => api.get(`/admin/orders/${id}`, {signal,timeout:15000});
 
-export const updateOrderStatusApi = (id, status) =>
-    api.put(`/admin/orders/${id}/status`, { status });
+export const updateOrderStatusApi = (id, status, options = {}) =>
+    api.put(`/admin/orders/${id}/status`, { status, ...options }, {timeout:15000});
 
 export const createProductApi = (data) => api.post('/admin/products', data);
 export const updateProductApi = (id, data) => api.put(`/admin/products/${id}`, data);
