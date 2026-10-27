@@ -10,6 +10,8 @@ import InventoryManagement from './InventoryManagement';
 import ReturnManagement from './ReturnManagement';
 import WarrantyManagement from './WarrantyManagement';
 import OrderManagement from './OrderManagement';
+import SupportCenter from './SupportCenter';
+import NotificationBell from './NotificationBell';
 import {
     LayoutDashboard, ShoppingBag, Package, DollarSign, Users,
     AlertTriangle, ArrowLeft, BarChart3, RefreshCw, Ticket,Settings
@@ -18,9 +20,10 @@ import {
     getAdminStatsApi
 } from '../services/api';
 
-export default function AdminDashboard({ onBackToStore }) {
+export default function AdminDashboard({ onBackToStore, userId }) {
     const [tab, setTab] = useState('stats'); // 'stats' | 'orders' | 'products' | 'users' | 'analytics'
     const [initialOrderId, setInitialOrderId] = useState(null);
+    const [initialSupportId,setInitialSupportId]=useState(null);
 
     // --- STATE TAB: TỔNG QUAN ---
     const [stats, setStats] = useState(null);
@@ -139,6 +142,7 @@ export default function AdminDashboard({ onBackToStore }) {
                         <Settings size={18} />
                         Cấu hình hệ thống
                     </button>
+                    <button type="button" onClick={()=>{setInitialSupportId(null);setTab('support');}} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderRadius:8,border:0,background:tab==='support'?'#2563eb':'transparent',color:'#fff',cursor:'pointer',fontWeight:600,textAlign:'left'}}>Hỗ trợ khách hàng</button>
                 </nav>
 
                 <div style={{ flexShrink: 0, padding: '16px' }}>
@@ -158,6 +162,12 @@ export default function AdminDashboard({ onBackToStore }) {
 
             {/* KHU VỰC NỘI DUNG CHÍNH (MAIN AREA) */}
             <main style={{ flex: 1, minWidth: 0, padding: '30px', overflowY: 'auto' }}>
+                {userId&&<div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}><NotificationBell key={`admin-bell:${userId}`} onOpenNotification={notification=>{
+                    if(notification.target_type==='support'){setInitialSupportId(notification.target_id);setTab('support');}
+                    else if(notification.target_type==='order'){setInitialOrderId(notification.target_id);setTab('orders');}
+                    else if(notification.target_type==='warranty')setTab('warranties');
+                }}/></div>}
+                {tab==='support'&&<SupportCenter key={`admin-support:${userId}`} admin userId={userId} initialThreadId={initialSupportId}/>}
 
                 {/* --- TAB 1: THỐNG KÊ TỔNG QUAN --- */}
                 {tab === 'stats' && (

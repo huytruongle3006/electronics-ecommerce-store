@@ -9,6 +9,26 @@ use App\Models\WarrantyServiceRequest;
 
 class StoreNotifier
 {
+    public static function supportMessage(\App\Models\SupportThread $thread, \App\Models\SupportMessage $message): void
+    {
+        $body='Yêu cầu #'.$thread->id.': '.$thread->subject.'. '.mb_substr($message->body,0,160);
+        if($message->sender_role==='admin'){
+            self::send($thread->user_id,"support-message:{$message->id}:customer",'Cửa hàng đã phản hồi hỗ trợ',$body,'support',$thread->id);
+        }else{
+            \App\Models\User::where('status','active')->where('id','!=',$message->sender_id)
+                ->whereHas('roles',fn($q)=>$q->where('maRole','ADMIN'))->select('id')->chunkById(100,function($admins)use($thread,$message,$body){
+                    foreach($admins as $admin)self::send($admin->id,"support-message:{$message->id}:admin:{$admin->id}",'Tin nhắn hỗ trợ từ khách',$body,'support',$thread->id);
+                });
+        }
+    }
+
+    public static function supportStatus(\App\Models\SupportThread $thread): void
+    {
+        $labels=['open'=>'Chờ xử lý','in_progress'=>'Đang xử lý','resolved'=>'Đã giải quyết'];
+        self::send($thread->user_id,"support-status:{$thread->id}:{$thread->version}",'Cập nhật yêu cầu hỗ trợ',
+            'Yêu cầu #'.$thread->id.' — '.$thread->subject.': '.$labels[$thread->status].'.','support',$thread->id);
+    }
+
     // Called inside the business transaction: a failed update cannot leave a notification.
     private static function send(int $userId, string $event, string $title, string $body, string $type, int $target): void
     {

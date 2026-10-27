@@ -1,82 +1,83 @@
-# TECHSTORE — Hoàn thiện quản lý đơn hàng admin và in phiếu
+# TECHSTORE — Nhắn tin hỗ trợ giữa user và admin
 
 ## Cập nhật bản đang chạy
 
-Gói update-only dùng cho nền quản lý giao hàng hoặc nền in phiếu đơn hàng đã giao trước đó. Bản đầy đủ có toàn bộ các chức năng trước đây.
-
-1. Dừng Vite bằng Ctrl+C. Giải nén electronics-store-admin-orders-update-only.zip và chép nội dung vào gốc dự án có artisan. Giữ đúng đường dẫn, thay file cũ; nếu nhóm đã sửa cùng file, đối chiếu trước khi chép.
-2. Giữ nguyên .env, APP_KEY, MySQL, Gmail và Gemini. Không nhập lại SQL và không tạo lại khóa.
-3. Chạy:
+1. Giải nén electronics-store-support-update-only.zip rồi chép nội dung vào đúng thư mục dự án có artisan, giữ đường dẫn và thay file cũ. Gói dùng trên nền admin đơn hàng/in phiếu/menu mới nhất hoặc nền lọc sản phẩm đã giao; có kèm file phụ thuộc để không thiếu import nếu bạn bỏ qua bản lọc. Nếu nhóm đã sửa cùng file, đối chiếu trước khi ghi đè.
+2. Giữ nguyên .env, APP_KEY, MySQL, Gmail và Gemini. Không nhập lại SQL, không tạo lại khóa và không chạy migrate:fresh.
+3. Chạy từng lệnh:
 
 ```powershell
+php artisan migrate --path=database/migrations/2026_10_27_150000_create_support_conversations_tables.php
 php artisan optimize:clear
 ```
 
-4. Khởi động lại php artisan serve nếu đang chạy. Mở terminal khác chạy npm.cmd run dev, hoặc chạy npm.cmd run build khi dùng giao diện build. Đóng tab cũ rồi mở lại http://localhost:8000 và Ctrl+F5.
+4. Khởi động lại php artisan serve nếu đang chạy. Mở terminal khác chạy npm.cmd run dev; nếu dùng giao diện build, chạy npm.cmd run build. Đóng tab cũ, mở lại http://localhost:8000 rồi Ctrl+F5.
 
-Bản cập nhật này không có migration mới hoặc package mới. Nền dự án cần đã có migration giao hàng 2026_10_27_100000_add_delivery_fields_to_orders.php. Nếu chưa có, xem phần cài mới bên dưới; không chạy migrate:fresh trên dữ liệu đang dùng.
+Migration tạo support_threads và support_messages; không xóa dữ liệu cũ. Bản này không cần cấu hình AI, SMTP, WebSocket, queue worker hay package mới để nhắn tin. Nền dự án cần có bảng store_notifications từ bản thông báo trước đây. Khi cài mới, chạy các migration bổ sung theo phần cuối hướng dẫn.
 
-## Lỗi cũ đã sửa
+## User nhắn với cửa hàng
 
-AdminDashboard trước đây tự hiển thị một bảng đơn hàng cũ, không sử dụng OrderManagement đã có nút in/chi tiết. Đã bỏ bảng trùng đó và nối tab Đơn hàng tới đúng màn hình quản lý mới. Kiểm thử mới đi từ AdminDashboard thực tế, không chỉ kiểm tra component riêng.
+1. Đăng nhập → mở menu tên tài khoản → Hỗ trợ / Nhắn cửa hàng.
+2. Bấm Tạo yêu cầu mới, nhập tiêu đề và nội dung. Có thể chọn một đơn của chính tài khoản trong Đơn hàng liên quan hoặc để không gắn đơn.
+3. Bấm Gửi yêu cầu hỗ trợ. Yêu cầu và tin nhắn đầu tiên được lưu cùng lúc; admin đang hoạt động nhận thông báo trong website.
+4. Chọn yêu cầu trong danh sách, đọc tin và gửi tiếp ở ô Tin nhắn. Lịch sử được giữ trên server, không mất khi đóng hộp thoại hoặc đăng nhập lại.
+5. Khi admin phản hồi, user nhận thông báo ở chuông. Bấm thông báo sẽ mở đúng hội thoại hỗ trợ, không mở nhầm chi tiết đơn hàng.
+6. Yêu cầu đã giải quyết vẫn giữ lịch sử. User gửi tin mới sẽ mở lại yêu cầu để cửa hàng xử lý tiếp.
 
-## Cách dùng
+Tiêu đề tối đa 160 ký tự, mỗi tin tối đa 4000 ký tự; không nhận nội dung chỉ có khoảng trắng. Bản đầu hỗ trợ chữ và xuống dòng, chưa gửi ảnh/tệp, chưa có gọi thoại/video hoặc chỉ báo đang nhập.
 
-### Danh sách đơn hàng
+## Admin trả lời
 
-- Đăng nhập admin → Đơn hàng. Mỗi dòng có nút Chi tiết đơn và In phiếu nhìn thấy ngay trong cột Thao tác.
-- Tìm theo mã đơn, tên người nhận, điện thoại, email/tên tài khoản hoặc mã vận đơn. Bấm Áp dụng bộ lọc.
-- Lọc trạng thái đơn, trạng thái thanh toán, ngày đặt từ/đến theo ngày Việt Nam. Có phân trang Trước/Sau, làm mới và xóa bộ lọc.
-- Khi lỗi mạng có thông báo và nút thử lại; kết quả tải cũ không ghi đè kết quả bộ lọc mới.
-- Tại Tổng quan, bấm mã trong Đơn Hàng Mới Nhận cũng mở đúng chi tiết đơn.
+1. Đăng nhập admin → sidebar Hỗ trợ khách hàng.
+2. Tìm theo tiêu đề, mã đơn, tên/email khách; lọc Chờ xử lý / Đang xử lý / Đã giải quyết. Danh sách phân trang 12 yêu cầu.
+3. Chọn yêu cầu, xem khách hàng, đơn liên quan và lịch sử trao đổi, nhập nội dung rồi Gửi tin nhắn.
+4. Tin từ admin làm yêu cầu chuyển Đang xử lý và tạo thông báo cho đúng chủ hội thoại.
+5. Có thể chọn trạng thái rồi Cập nhật trạng thái. User nhận thông báo trạng thái mới. Nếu có tin/cập nhật mới làm phiên bản thay đổi, hệ thống yêu cầu tải lại trước khi cập nhật để tránh ghi đè dữ liệu mới.
+6. Admin cũng có chuông thông báo trên đầu khu vực quản trị; tin khách gửi và yêu cầu mới xuất hiện ở đó. Bấm sẽ mở mục hỗ trợ và đúng hội thoại.
 
-### Chi tiết đơn hàng
+Đây là hộp thư dùng chung của các admin có role ADMIN. Tin khách gửi thông báo tới các admin đang active, trừ người gửi nếu cùng tài khoản. Dấu đã đọc của phía admin dùng chung cho đội ngũ; không phải hệ thống phân công nhân viên riêng. Dấu đã đọc không phải cam kết đã giải quyết yêu cầu.
 
-- Nút Chi tiết đơn tải dữ liệu mới từ server theo id, không chỉ dùng lại bản trong danh sách.
-- Có tài khoản đặt hàng, email/điện thoại tài khoản, người nhận, số điện thoại, địa chỉ và ghi chú riêng.
-- Có sản phẩm, mã sản phẩm, số lượng, đơn giá đã đặt, thành tiền đã lưu; sản phẩm đã gỡ có dòng thay thế.
-- Có tạm tính, giảm giá, mã voucher và tổng thanh toán. Không tính lại theo giá danh mục hiện tại.
-- Có phương thức/trạng thái thanh toán, số tiền bản ghi, mã giao dịch hoặc phiếu thu và thời gian thanh toán.
-- Có quản lý vận chuyển: đơn vị, mã vận đơn, ngày dự kiến, giờ giao/xác nhận; giữ luồng gửi thông báo cho khách đang có.
-- Có lịch sử theo thời gian/id, người xử lý và ghi chú; tài khoản xử lý đã gỡ có mã id thay thế.
-- Có nút In phiếu / Lưu PDF ngay trên đầu chi tiết, nút tải lại và đóng; giao diện có vùng cuộn khi đơn nhiều dòng.
+## Tự cập nhật và chưa đọc
 
-### Xử lý trạng thái và COD
+- Khi đang mở, hội thoại kiểm tra tin mới khoảng 5 giây, danh sách khoảng 8 giây, chuông theo cơ chế cũ khoảng 20 giây. Chuyển lại tab/focus cũng tải lại; tab bị ẩn tạm ngưng các lần kiểm tra định kỳ.
+- Có nút Tải lại hội thoại/Làm mới. Chưa dùng WebSocket nên đây là polling, không phải cập nhật tức thời tuyệt đối; trình duyệt/mạng có thể trì hoãn.
+- Lần mở đầu tải 30 tin mới nhất, hiển thị theo thứ tự cũ → mới. Xem tin nhắn cũ hơn tải 30 tin trước đó; tin mới được lấy tăng dần theo id, không bỏ qua khoảng giữa.
+- Nếu có nhiều hơn 30 tin mới giữa các lần tải, bấm Tải tiếp tin mới hoặc chờ lượt kiểm tra tiếp theo để lấy tiếp; các tin đã tải vẫn được giữ.
+- Mở một hội thoại đang hiển thị/focus sẽ đánh dấu đã đọc đến id tin cuối đã tải. Tin đến sau mốc đó vẫn chưa đọc. Không đánh dấu mọi hội thoại chỉ vì xem danh sách.
+- Đọc hội thoại và đọc chuông thông báo là hai dấu độc lập. Có thể dùng Đánh dấu tất cả đã đọc trong chuông nếu cần dọn thông báo cũ.
 
-- Chỉ hiển thị bước chuyển hợp lệ: chờ duyệt → xác nhận/hủy; xác nhận → đang giao/hủy; đang giao → hoàn tất. Đơn đã hủy/hoàn tất không được mở lại.
-- Chọn trạng thái mới rồi bấm Xác nhận cập nhật trạng thái. Hủy đơn cần nhập lý do, tối đa 200 ký tự, được ghi trong lịch sử.
-- UI gửi trạng thái đang xem để kiểm tra xung đột. Nếu admin/khách đã cập nhật trước đó, hệ thống từ chối và yêu cầu Tải lại chi tiết, không ghi đè kết quả mới.
-- Trong lúc gửi, khóa thao tác/đóng hộp thoại liên quan. Nếu mất mạng hoặc chưa biết kết quả, tải lại chi tiết trước khi xử lý lần nữa.
-- Đơn completed + COD pending có nút Xác nhận đã thu COD trong phần Thanh toán. Nhập mã phiếu thu và xác nhận đã thu đủ tiền thực tế. Sau thành công, chi tiết tải lại trạng thái và mã phiếu thu.
-- Chuyển Hoàn tất không tự đánh dấu đã thu COD. Hủy đơn/hoàn tiền và thông báo vẫn theo luồng nghiệp vụ hiện có.
+## Tránh gửi trùng khi mất mạng
 
-## In phiếu / lưu PDF
+- Trình duyệt lưu UUID và nội dung của lần gửi đang chờ trong sessionStorage, tách theo tài khoản, vai trò và hội thoại. Server kiểm tra UUID để một lần gửi chỉ tạo một yêu cầu/tin và thông báo.
+- Nếu chờ lâu rồi báo lỗi, không đổi nội dung của lần đang chờ. Bấm Gửi lại cùng yêu cầu để gửi đúng UUID cũ.
+- Đóng/mở lại hộp thoại trong cùng tab vẫn khôi phục lần gửi đang chờ. Gửi lại sau lỗi giới hạn tốc độ/hết phiên vẫn giữ UUID; đợi hoặc đăng nhập lại rồi thử đúng yêu cầu cũ.
+- Đóng hẳn tab hoặc xóa dữ liệu phiên có thể làm mất UUID trên máy. Kiểm tra lịch sử trước khi tạo/gửi một lần mới. Chỉ nội dung đã gửi thành công được lưu server; đoạn đang gõ chưa gửi có thể mất khi đóng giao diện.
+- Nếu browser chặn sessionStorage thì không gửi cho đến khi có thể lưu mã an toàn. Không cần gửi API key hay mật khẩu trong nội dung chat.
 
-1. Bấm In phiếu trên dòng đơn hoặc In phiếu / Lưu PDF trong chi tiết.
-2. Tab mới tải phiếu; bấm In / Lưu PDF ở trang phiếu.
-3. Trong hộp thoại in của trình duyệt, chọn máy in hoặc Lưu dưới dạng PDF, khổ A4. Có thể tắt đầu/chân trang của trình duyệt.
-4. Nếu bị chặn popup, cho phép cửa sổ bật lên cho địa chỉ website rồi bấm lại.
+## Quyền và dữ liệu
 
-Gói đã kèm controller, template và các file hỗ trợ in để tránh thiếu file khi cập nhật từ nền giao hàng. Phiếu là thông tin đơn hàng, không thay hóa đơn điện tử hoặc biên nhận thu tiền. PDF được lưu qua hộp thoại in, không tải file PDF tự động từ server. Quyền admin/user vẫn được kiểm tra; không có token trong URL phiếu.
+- User chỉ xem/tạo/gửi/đánh dấu đã đọc hội thoại của mình. Chỉ gắn đơn của chính mình; sửa id trên đường dẫn không vượt quyền.
+- Endpoint admin bắt buộc role ADMIN trên server, không dựa vào cờ do trình duyệt gửi. Vai trò người gửi do endpoint xác định, không cho client tự nhận là admin.
+- Tin nhắn hiển thị dạng văn bản được React escape. HTML/script trong nội dung không được thực thi và không tự mở link/tệp bên ngoài.
+- Ghi yêu cầu/tin/trạng thái/thông báo trong transaction; lỗi lưu thông báo sẽ hoàn tác thay đổi liên quan. Có giới hạn gửi và đọc riêng để polling không làm hết lượt gửi.
+- Yêu cầu và tin được giữ lại, không có thao tác xóa lịch sử trong bản này.
 
-## Test nhanh
+## Test nhanh bằng 2 tài khoản
 
-1. Mở admin từ ứng dụng → Đơn hàng: phải thấy Chi tiết đơn và In phiếu ở từng dòng. Kiểm tra cả khi bấm mã đơn ở Tổng quan.
-2. Mở chi tiết đơn có voucher: đối chiếu tài khoản, địa chỉ, sản phẩm, tiền giảm, thanh toán và lịch sử.
-3. Tìm một mã đơn/email/vận đơn; lọc trạng thái, ngày Việt Nam và thanh toán; sang trang kế tiếp rồi đổi lọc: quay về trang 1.
-4. Chọn chuyển trạng thái nhưng Bỏ qua: chưa đổi đơn. Xác nhận: đơn và lịch sử/thông báo cập nhật. Hủy không có lý do phải bị chặn.
-5. Hai cửa sổ mở cùng đơn; cửa sổ thứ nhất chuyển trạng thái trước, cửa sổ sau dùng trạng thái cũ phải nhận thông báo tải lại.
-6. Đơn COD đã hoàn tất nhưng chưa thu tiền: xác nhận phiếu thu, trạng thái/mã trong chi tiết phải đổi sau tải lại.
-7. In từ danh sách và chi tiết: mở đúng mã đơn, chọn In / Lưu PDF để kiểm tra bản in.
-8. User thường gọi API admin hoặc cố xem đơn không thuộc quyền: phải bị từ chối.
+1. Mở một cửa sổ thường cho khách và cửa sổ ẩn danh cho admin (hoặc hai profile trình duyệt khác nhau) để hai phiên không ghi đè token của nhau.
+2. Khách tạo yêu cầu gắn với đơn, gửi tin. Admin mở Hỗ trợ khách hàng hoặc chuông: thấy yêu cầu và nội dung đúng.
+3. Admin trả lời. Khách đang mở sẽ thấy tin mới sau lượt cập nhật hoặc bấm Tải lại; chuông có thông báo mở đúng hội thoại.
+4. Admin chuyển Đã giải quyết: khách thấy trạng thái/thông báo. Khách nhắn thêm: yêu cầu mở lại Chờ xử lý; admin trả lời lại sẽ thành Đang xử lý.
+5. Đăng nhập một khách khác: không xem được hội thoại trước và không gắn được đơn của người khác.
+6. Tạo hơn 30 tin bằng test hoặc dữ liệu thử: Xem tin cũ hơn vẫn giữ được lịch sử khi tin mới đến.
+7. Thử mất mạng lúc gửi rồi Gửi lại cùng yêu cầu: chỉ có một tin/yêu cầu, không có thông báo trùng. Kiểm tra cả khi đóng/mở hộp thoại trong cùng tab.
+8. Nếu hết phiên hoặc gửi quá nhanh, dùng thông báo hướng dẫn, giữ mã gửi đang chờ và kiểm tra lịch sử khi quay lại.
 
 ## GitHub và kiểm thử
 
-Gói cập nhật gồm 3 file mới + 9 file sửa so với nền in phiếu, kèm 5 file hỗ trợ đã có để tương thích nền giao hàng (17 file tổng cộng). Danh sách và commit ở UPDATE.md. Upload nội dung đã giải nén, giữ đúng đường dẫn. Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log.
+Gói update có 9 file mới, 8 file sửa và 5 file phụ thuộc kèm lại từ bản lọc sản phẩm (22 file). Upload nội dung sau giải nén vào đúng đường dẫn repository. Không upload nguyên ZIP, .env, vendor, node_modules, public/build hoặc log. Danh sách và nội dung commit trong UPDATE.md.
 
-183 bài backend / 1346 assertions đạt trên SQLite riêng; gồm 8 bài mới về quyền admin, chi tiết, tìm/lọc, ngày Việt Nam, phân trang và xung đột trạng thái. 9 nhóm React/jsdom mới đạt từ AdminDashboard thực tế, gồm in ở dòng/chi tiết, mở từ Tổng quan, tìm/lọc, retry, phản hồi muộn, đổi trạng thái, hủy có lý do và COD. Production build đạt, còn cảnh báo Tailwind/bundle có sẵn.
-
-Chưa kiểm tra MySQL hoặc hộp thoại in/PDF thực tế trên máy bạn. Hãy dùng các bước test trên sau khi cập nhật.
+206 bài backend / 1534 assertions đạt trên SQLite riêng, gồm 14 bài mới cho hỗ trợ. 9 nhóm React/jsdom mới đạt: nhắn hai chiều, an toàn nội dung, retry UUID sau mất mạng/429, tạo yêu cầu gắn đơn, sidebar admin/trạng thái, tải tin cũ/tin mới, lỗi/retry, menu/chuông khách/admin và đổi tài khoản. Production build đạt, còn cảnh báo Tailwind/bundle có sẵn. Chưa kiểm tra trực tiếp trên MySQL hoặc trình duyệt thật của máy bạn.
 
 ## Cài mới từ đầu
 
@@ -84,7 +85,7 @@ Sau khi chuẩn bị .env theo các bước bên dưới, thêm cấu hình Gemi
 
 ## 1. Giải nén và mở đúng thư mục
 
-Giải nén `electronics-store-admin-orders-full.zip` vào một thư mục mới.
+Giải nén `electronics-store-support-full.zip` vào một thư mục mới.
 
 Trong VS Code chọn **File → Open Folder**, mở thư mục vừa giải nén. Bạn phải nhìn thấy `artisan`, `composer.json`, `package.json` và file hướng dẫn này ngay trong thư mục đang mở.
 
@@ -175,6 +176,7 @@ php artisan migrate --path=database/migrations/2026_10_26_140000_create_store_no
 php artisan migrate --path=database/migrations/2026_10_26_160000_create_order_rebuy_batches_table.php
 php artisan migrate --path=database/migrations/2026_10_26_180000_add_per_user_limit_to_vouchers.php
 php artisan migrate --path=database/migrations/2026_10_27_100000_add_delivery_fields_to_orders.php
+php artisan migrate --path=database/migrations/2026_10_27_150000_create_support_conversations_tables.php
 php artisan optimize:clear
 ```
 
@@ -280,8 +282,4 @@ Nếu muốn dùng bản build thay vì giữ Vite chạy, thực hiện `npm.cm
 
 
 
-
-## Sửa menu admin khi cuộn
-
-Menu trái dùng sticky ở đỉnh cửa sổ, giới hạn chiều cao theo viewport. Danh mục cuộn riêng trên màn hình thấp, tiêu đề và nút Về Cửa Hàng được giữ trong khung. Chỉ sửa code AdminDashboard.jsx, không có migration. Khởi động lại Vite/build và Ctrl+F5 sau cập nhật. Build đạt; cần kiểm tra cuộn trên trình duyệt máy bạn.
 

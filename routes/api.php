@@ -43,6 +43,11 @@ Route::post('/warranties/check', [WarrantyController::class, 'check'])->middlewa
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/support', [\App\Http\Controllers\Api\SupportController::class,'index'])->name('support.index')->middleware('throttle:90,1,support-read-');
+    Route::post('/support', [\App\Http\Controllers\Api\SupportController::class,'store'])->name('support.store')->middleware('throttle:12,1,support-write-');
+    Route::get('/support/{id}', [\App\Http\Controllers\Api\SupportController::class,'show'])->whereNumber('id')->name('support.show')->middleware('throttle:90,1,support-read-');
+    Route::post('/support/{id}/messages', [\App\Http\Controllers\Api\SupportController::class,'send'])->whereNumber('id')->name('support.send')->middleware('throttle:12,1,support-write-');
+    Route::put('/support/{id}/read', [\App\Http\Controllers\Api\SupportController::class,'read'])->whereNumber('id')->name('support.read')->middleware('throttle:90,1,support-read-');
     Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
     Route::put('/notifications/read-all', [\App\Http\Controllers\Api\NotificationController::class, 'readAll']);
     Route::put('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'read'])->whereNumber('id');
@@ -99,6 +104,11 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('admin')->middleware(\App\Http\Middleware\EnsureAdmin::class)->group(function () {
+        Route::get('/support', [\App\Http\Controllers\Api\SupportController::class,'index'])->name('admin.support.index')->middleware('throttle:90,1,support-read-');
+        Route::get('/support/{id}', [\App\Http\Controllers\Api\SupportController::class,'show'])->whereNumber('id')->name('admin.support.show')->middleware('throttle:90,1,support-read-');
+        Route::post('/support/{id}/messages', [\App\Http\Controllers\Api\SupportController::class,'send'])->whereNumber('id')->name('admin.support.send')->middleware('throttle:30,1,support-admin-write-');
+        Route::put('/support/{id}/read', [\App\Http\Controllers\Api\SupportController::class,'read'])->whereNumber('id')->name('admin.support.read')->middleware('throttle:90,1,support-read-');
+        Route::put('/support/{id}/status', [\App\Http\Controllers\Api\SupportController::class,'status'])->whereNumber('id')->name('admin.support.status')->middleware('throttle:30,1,support-admin-write-');
         Route::get('/warranties', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'index']);
         Route::get('/warranties/orders', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'orders']);
         Route::get('/warranties/{id}', [\App\Http\Controllers\Api\WarrantyManagementController::class, 'detail']);
@@ -161,3 +171,4 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/settings', [AdminController::class, 'updateSettings']);
     });
 });
+

@@ -4,8 +4,10 @@ import Navbar from './components/Navbar';
 import ProductAdvisor from './components/ProductAdvisor';
 import RecentlyViewed from './components/RecentlyViewed';
 import { CustomerVoucherModal } from './components/CustomerVouchers';
+import { SupportModal } from './components/SupportCenter';
 import useRecentlyViewed from './hooks/useRecentlyViewed';
 import useStoreCart from './hooks/useStoreCart';
+import useProductCatalog from './hooks/useProductCatalog';
 import CartSyncNotice from './components/CartSyncNotice';
 import WishlistModal from './components/WishlistModal';
 import MyReviewsModal from './components/MyReviewsModal';
@@ -22,7 +24,7 @@ import CheckoutModal from './components/CheckoutModal';
 import ProductDetailModal from './components/ProductDetailModal';
 import AdminDashboard from './components/AdminDashboard';
 import {
-    getProducts, getCategories, logoutApi,
+    getCategories, logoutApi,
 
 } from './services/api';
 import { AlertCircle } from 'lucide-react';
@@ -54,19 +56,26 @@ const checkIsAdmin = (user) => {
     return false;
 };
 export function App() {
-    const [products, setProducts] = useState([]);
+    const catalog = useProductCatalog();
+    const {items: products,loading} = catalog;
     const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [categoryError, setCategoryError] = useState('');
+    const [categoryRevision, setCategoryRevision] = useState(0);
     const [selectedProductId, setSelectedProductId] = useState(null);
     const [isMyReviewsOpen, setIsMyReviewsOpen] = useState(false);
     const [isVouchersOpen, setIsVouchersOpen] = useState(false);
+    const [isSupportOpen, setIsSupportOpen] = useState(false);
+    const [supportTarget, setSupportTarget] = useState(null);
     const [isOrdersOpen, setIsOrdersOpen] = useState(false);
     const [isAccountOpen, setIsAccountOpen] = useState(false);
     const [isRecoveryOpen, setIsRecoveryOpen] = useState(false);
     const [resetData, setResetData] = useState(() => parsePasswordResetLink(window.location));
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('ALL');
-    const [sortBy, setSortBy] = useState('newest');
+    const searchQuery = catalog.query.search;
+    const selectedCategory = catalog.query.category_id;
+    const sortBy = catalog.query.sort;
+    const setSearchQuery = search => catalog.update({search});
+    const setSelectedCategory = category_id => catalog.update({category_id});
+    const setSortBy = sort => catalog.update({sort});
 
 
     const [isCartOpen, setIsCartOpen] = useState(false);
@@ -101,7 +110,7 @@ export function App() {
     }, []);
     const wishlist = useWishlist(currentUser);
     const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-    useEffect(() => { setIsWishlistOpen(false); setIsMyReviewsOpen(false); setIsVouchersOpen(false); setSelectedProductId(null); }, [currentUser?.id]);
+    useEffect(() => { setIsWishlistOpen(false); setIsMyReviewsOpen(false); setIsVouchersOpen(false); setIsSupportOpen(false); setSupportTarget(null); setSelectedProductId(null); }, [currentUser?.id]);
     const toggleFavorite = product => {
         if (!currentUser) { setSelectedProductId(null); setIsAuthOpen(true); return; }
         return wishlist.toggle(product);
@@ -118,28 +127,13 @@ export function App() {
         }
     });
     
-    // Tải danh sách sản phẩm & danh mục
     useEffect(() => {
-        getProducts()
-            .then((res) => {
-                const items = res.data.data?.data || res.data.data || [];
-                setProducts(items);
-            })
-            .catch((err) => console.error('Lỗi nạp sản phẩm:', err))
-            .finally(() => setLoading(false));
-
-        getCategories()
-            .then((res) => setCategories(res.data.data || []))
-            .catch(() => {
-                setCategories([
-                    { id: 1, tenLoai: 'Laptop' },
-                    { id: 2, tenLoai: 'Điện thoại' },
-                    { id: 3, tenLoai: 'Máy tính bảng' },
-                    { id: 4, tenLoai: 'Bàn phím & Chuột' },
-                ]);
-            });
-    }, []);
-
+        let live = true;
+        setCategoryError('');
+        getCategories().then(({data}) => { if(live)setCategories(data.data || []); })
+            .catch(() => { if(live)setCategoryError('Không tải được danh mục. Bạn vẫn có thể tìm theo tên, giá hoặc tồn kho.'); });
+        return () => { live = false; };
+    }, [categoryRevision]);
     const handleLogout = async () => {
         try { await logoutApi(); } catch {}
         localStorage.removeItem('access_token'); localStorage.removeItem('user_info');
@@ -158,22 +152,6 @@ export function App() {
     const totalCount = useMemo(() => {
         return cartItems.reduce((total, item) => total + (item.quantity || item.cartQty || 1), 0);
     }, [cartItems]);
-
-    // Bộ lọc sản phẩm
-    const filteredProducts = useMemo(() => {
-        return products
-            .filter(p => {
-                const matchSearch = p.tenSP.toLowerCase().includes(searchQuery.toLowerCase());
-                const matchCat = selectedCategory === 'ALL' || p.category_id === Number(selectedCategory);
-                return matchSearch && matchCat;
-            })
-            .sort((a, b) => {
-                if (sortBy === 'price_asc') return Number(a.price) - Number(b.price);
-                if (sortBy === 'price_desc') return Number(b.price) - Number(a.price);
-                return b.id - a.id;
-            });
-    }, [products, searchQuery, selectedCategory, sortBy]);
-
 
     const leaveRecovery = (login = false) => {
         setIsRecoveryOpen(false);
@@ -202,7 +180,7 @@ export function App() {
     }
 
     if (isAdminView) {
-        return <AdminDashboard onBackToStore={() => setIsAdminView(false)} />;
+        return <AdminDashboard key={`admin:${currentUser?.id||'guest'}`} userId={currentUser?.id} onBackToStore={() => {setIsAdminView(false);catalog.reload();setCategoryRevision(value=>value+1);}} />;
     }
     return (
         <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
@@ -219,7 +197,7 @@ export function App() {
                 cartCount={totalCount}
                 onOpenCart={() => setIsCartOpen(true)}
                 onOpenWarranty={() => { setNotificationTarget(null); setIsWarrantyOpen(true); }}
-                onResetFilter={() => { setSelectedCategory('ALL'); setSearchQuery(''); }}
+                onResetFilter={catalog.reset}
                 user={currentUser}
                 onOpenAuth={() => setIsAuthOpen(true)}
                 onLogout={handleLogout}
@@ -229,11 +207,13 @@ export function App() {
                     setIsAccountOpen(false); setIsWishlistOpen(false); setIsMyReviewsOpen(false);
                     setIsCheckoutOpen(false); setSelectedProductId(null);
                     setNotificationTarget({ ...notification, owner_id: currentUser.id });
-                    if (notification.target_type === 'warranty') { setIsOrdersOpen(false); setIsWarrantyOpen(true); }
-                    else { setIsWarrantyOpen(false); setIsOrdersOpen(true); }
+                    if(notification.target_type==='support'){setSupportTarget({id:notification.target_id,owner_id:currentUser.id});setIsSupportOpen(true);setIsOrdersOpen(false);setIsWarrantyOpen(false);}
+                    else if (notification.target_type === 'warranty') { setIsSupportOpen(false); setIsOrdersOpen(false); setIsWarrantyOpen(true); }
+                    else { setIsSupportOpen(false); setIsWarrantyOpen(false); setIsOrdersOpen(true); }
                 }}
                 onOpenAccount={() => setIsAccountOpen(true)}
                 onOpenVouchers={() => setIsVouchersOpen(true)}
+                onOpenSupport={() => {setSupportTarget(null);setIsSupportOpen(true);}}
                 onOpenAdmin={() => setIsAdminView(true)}
             />
 
@@ -244,22 +224,28 @@ export function App() {
                     onSelectCategory={setSelectedCategory}
                     sortBy={sortBy}
                     onSelectSort={setSortBy}
+                    filters={catalog.query}
+                    onApplyFilters={catalog.update}
+                    onReset={catalog.reset}
                 />
+                {categoryError&&<p role="alert" style={{color:'#b91c1c'}}>{categoryError} <button type="button" onClick={()=>setCategoryRevision(value=>value+1)}>Tải lại danh mục</button></p>}
             </div>
 
             {currentUser && wishlist.error && <div role="alert" style={{ maxWidth: 1200, margin: '16px auto', padding: 16, background: '#fff1f2' }}>{wishlist.error} <button onClick={wishlist.reload}>Tải lại yêu thích</button></div>}
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 20px' }}><CartSyncNotice cart={cart} /></div>
             <main style={{ maxWidth: '1240px', margin: '24px auto', padding: '0 20px' }}>
+                <div style={{display:'flex',gap:12,justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',marginBottom:16}}><p role="status">{loading?'Đang tìm sản phẩm...':`${catalog.total} sản phẩm phù hợp · Trang ${catalog.current_page}/${catalog.last_page}`}</p><button type="button" disabled={loading} onClick={catalog.reload} style={{padding:'9px 12px',background:'#fff',border:'1px solid #cbd5e1',borderRadius:8,color:'#1d4ed8'}}>Làm mới sản phẩm</button></div>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: '80px 0' }}>Đang tải danh sách thiết bị...</div>
-                ) : filteredProducts.length === 0 ? (
+                ) : catalog.error ? <p role="alert" style={{color:'#b91c1c'}}>{catalog.error} <button type="button" onClick={catalog.reload}>Thử tải lại sản phẩm</button></p> : products.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '80px 0', backgroundColor: '#fff', borderRadius: '12px' }}>
                         <AlertCircle size={48} color="#94a3b8" />
                         <p>Không tìm thấy sản phẩm phù hợp</p>
+                        <button type="button" onClick={catalog.reset}>Xóa bộ lọc để xem tất cả</button>
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '22px' }}>
-                        {filteredProducts.map(p => (
+                        {products.map(p => (
                             <ProductCard
                                 key={p.id}
                                 product={p}
@@ -272,9 +258,11 @@ export function App() {
                         ))}
                     </div>
                 )}
+                {!catalog.error&&catalog.last_page>1&&<nav aria-label="Phân trang sản phẩm" style={{display:'flex',gap:12,alignItems:'center',justifyContent:'center',marginTop:22}}><button type="button" disabled={loading||catalog.query.page<=1} onClick={()=>catalog.goToPage(catalog.query.page-1)} style={{padding:10}}>Trang trước</button><span>{catalog.current_page}/{catalog.last_page}</span><button type="button" disabled={loading||catalog.query.page>=catalog.last_page} onClick={()=>catalog.goToPage(catalog.query.page+1)} style={{padding:10}}>Trang sau</button></nav>}
             </main>
 
             <RecentlyViewed key={`recent:${currentUser?.id || 'guest'}`} recent={recent} cartBusy={cart.busy} onAddToCart={addToCart} onViewDetail={id => setSelectedProductId(id)} />
+            {isSupportOpen&&currentUser&&<SupportModal key={`support:${currentUser.id}`} userId={currentUser.id} initialThreadId={supportTarget?.owner_id===currentUser.id?supportTarget.id:null} onClose={()=>setIsSupportOpen(false)}/>}
             {isVouchersOpen && currentUser && <CustomerVoucherModal key={`vouchers:${currentUser.id}`}
                 onClose={() => setIsVouchersOpen(false)} onOpenCart={() => {setIsVouchersOpen(false);setIsCartOpen(true);}} />}
             {isAccountOpen && currentUser && <AccountModal key={`account:${currentUser.id}`}
@@ -362,6 +350,7 @@ export function App() {
                     // Xóa giỏ hàng local và tải lại giỏ trống từ DB
                     
                     loadCartFromDB();
+                    catalog.reload();
                 }}
             />}
             {isMyReviewsOpen && currentUser && <MyReviewsModal key={`reviews:${currentUser.id}`}
@@ -388,10 +377,7 @@ export function App() {
                 onOpenCart={() => { setIsOrdersOpen(false); setIsCartOpen(true); }}
                 initialOrderId={notificationTarget?.owner_id === currentUser?.id && notificationTarget?.target_type === 'order' ? notificationTarget.target_id : null}
                 isOpen={isOrdersOpen}
-                onOrderChanged={() => {
-                    getProducts().then(res => setProducts(res.data.data?.data || res.data.data || []))
-                        .catch(err => console.error('Không tải lại được tồn kho:', err));
-                }}
+                onOrderChanged={catalog.reload}
                 onClose={() => setIsOrdersOpen(false)}
             />
         </div>
@@ -405,3 +391,4 @@ if (container) {
     }
     container._reactRoot.render(<App />);
 }
+

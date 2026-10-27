@@ -23,8 +23,15 @@ export const getProfileApi = () => api.get('/profile');
 export const updateProfileApi = (data) => api.put('/profile', data);
 export const changePasswordApi = (data) => api.put('/profile/password', data);
 export const logoutApi = () => api.post('/logout');
+const supportPath = admin => admin ? '/admin/support' : '/support';
+export const getSupportThreadsApi = (admin, params = {}, signal) => api.get(supportPath(admin), {params,signal,timeout:12000});
+export const createSupportThreadApi = data => api.post('/support', data, {timeout:15000});
+export const getSupportThreadApi = (id, admin, params = {}, signal) => api.get(`${supportPath(admin)}/${id}`, {params,signal,timeout:12000});
+export const sendSupportMessageApi = (id, admin, data) => api.post(`${supportPath(admin)}/${id}/messages`, data, {timeout:15000});
+export const readSupportThreadApi = (id, admin, through_id) => api.put(`${supportPath(admin)}/${id}/read`, {through_id}, {timeout:12000});
+export const setSupportStatusApi = (id, data) => api.put(`/admin/support/${id}/status`, data, {timeout:15000});
 // APIs Sản phẩm & Bảo hành
-export const getProducts = () => api.get('/products');
+export const getProducts = (params = {}, signal) => api.get('/products', {params,signal,timeout:15000});
 export const getProductDetail = (id) => api.get(`/products/${id}`);
 export const getCategories = () => api.get('/categories');
 export const checkWarranty = (serial_number) => api.post('/warranties/check', { serial_number });

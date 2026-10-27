@@ -3,7 +3,7 @@ import { Search, ShieldCheck, ShoppingCart, User, LogOut, Package, LayoutDashboa
 import './Navbar.css';
 import NotificationBell from './NotificationBell';
 
-export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false, onOpenNotification, onOpenVouchers }) {
+export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenCart, onOpenWarranty, onResetFilter, user, onOpenAuth, onLogout, onOpenOrders, onOpenAccount, onOpenMyReviews, onOpenAdmin, favoriteCount = 0, onOpenFavorites, cartBusy = false, onOpenNotification, onOpenVouchers, onOpenSupport }) {
     const [expanded, setExpanded] = useState(false);
     const account = useRef(null), trigger = useRef(null);
     const admin = !!user && (user.is_admin || user.roles_list?.includes('ADMIN') || user.roles?.some(role => role === 'ADMIN' || role.maRole === 'ADMIN'));
@@ -19,7 +19,7 @@ export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenC
     return <header className="store-header">
         <div className="store-header__main">
             <button className="store-brand" type="button" onClick={onResetFilter} aria-label="TECHSTORE — về trang sản phẩm"><span className="store-brand__mark"><Zap size={26} fill="currentColor" /></span><span><strong>TECHSTORE</strong><small>Thiết bị tốt · Trải nghiệm tốt</small></span></button>
-            <div className="store-search"><Search size={19} aria-hidden="true" /><input aria-label="Tìm kiếm sản phẩm" type="search" placeholder="Bạn đang tìm thiết bị gì?" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} /></div>
+            <div className="store-search"><Search size={19} aria-hidden="true" /><input aria-label="Tìm kiếm sản phẩm" type="search" maxLength={100} placeholder="Tìm theo tên hoặc mã sản phẩm..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} /></div>
             <div className="store-header__tools">
                 <button type="button" className="store-warranty" onClick={onOpenWarranty} aria-label="Tra cứu bảo hành" title="Tra cứu bảo hành"><ShieldCheck size={20} /><span>Bảo hành</span></button>
                 <button type="button" className="store-cart" onClick={onOpenCart} aria-label={`Giỏ hàng, ${cartCount} sản phẩm`}><ShoppingCart size={21} /><span>Giỏ hàng</span><b>{cartBusy ? '…' : cartCount}</b></button>
@@ -30,6 +30,7 @@ export default function Navbar({ searchQuery, setSearchQuery, cartCount, onOpenC
                         <button type="button" onClick={() => act(onOpenAccount)}><User size={17} />Quản lý tài khoản</button>
                         <button type="button" onClick={() => act(onOpenOrders)}><Package size={17} />Đơn hàng của tôi</button>
                         <button type="button" onClick={() => act(onOpenVouchers)}><Zap size={17} />Mã giảm giá</button>
+                        <button type="button" onClick={() => act(onOpenSupport)}><MessageSquare size={17} />Hỗ trợ / Nhắn cửa hàng</button>
                         <button type="button" onClick={() => act(onOpenMyReviews)}><MessageSquare size={17} />Đánh giá của tôi</button>
                         <button type="button" onClick={() => act(onOpenFavorites)}><Heart size={17} />Sản phẩm yêu thích{favoriteCount > 0 && <span className="store-account__badge">{favoriteCount}</span>}</button>
                         {admin && <button type="button" onClick={() => act(onOpenAdmin)}><LayoutDashboard size={17} />Trang quản trị</button>}

@@ -1,70 +1,72 @@
-# Hoàn thiện đơn hàng admin, chi tiết và in phiếu
+# Trung tâm hỗ trợ: user và admin nhắn tin trong website
 
-## Vấn đề và kết quả
+So với bản lọc sản phẩm mới nhất; giữ các chức năng trước đây. Gói có thêm phụ thuộc để dùng trên nền admin đơn hàng/in phiếu trước bản lọc.
 
-Tab Đơn hàng của AdminDashboard dùng bảng cũ, không nối tới OrderManagement có chức năng in. Đã thay bằng một màn hình quản lý dùng chung: in ngay trên dòng đơn, chi tiết từ server, tìm/lọc/phân trang và xử lý đơn trong chi tiết. Mã đơn ở Tổng quan có thể bấm để mở chi tiết.
+## Chức năng
 
-## Bổ sung
+- User tạo yêu cầu, tùy chọn gắn đơn của mình, nhắn tiếp và đọc phản hồi từ cửa hàng.
+- Admin có mục Hỗ trợ khách hàng, xem/tìm/lọc/phân trang, trả lời và cập nhật trạng thái.
+- Thông báo riêng khi khách gửi cho admin active, admin trả lời cho chủ yêu cầu và khi cập nhật trạng thái; chuông mở đúng hội thoại.
+- Hội thoại polling 5 giây khi tab hiển thị, danh sách 8 giây; hỗ trợ tải 30 tin cũ/tin mới theo cursor không bỏ khoảng giữa.
+- Chưa đọc theo phía khách/admin; admin dùng chung hộp thư và dấu đã đọc. Đọc không đổi thứ tự inbox/version.
+- UUID và receipt trên server chống gửi trùng khi mất phản hồi. Pending lưu sessionStorage theo tài khoản/vai trò/hội thoại; giữ UUID qua retry, giới hạn tốc độ hoặc hết phiên.
+- Phân quyền server, nội dung dạng chữ, không attachments/WebSocket/email. Không xóa lịch sử. Các cập nhật/notification cùng transaction.
 
-- Chi tiết: tài khoản, người nhận/địa chỉ, ghi chú, sản phẩm/giá đã đặt, voucher/tiền giảm/tổng, thanh toán/phiếu thu, vận chuyển và lịch sử kèm người xử lý.
-- API admin chi tiết riêng; tìm theo mã/tên/SĐT/email/vận đơn, lọc trạng thái thanh toán/ngày Việt Nam; phân trang 15 dòng và sắp xếp ổn định.
-- Xác nhận trước khi đổi trạng thái, hủy có lý do; gửi expected_status để chặn ghi đè trạng thái mới.
-- Giữ quản lý giao hàng/thông báo, thu COD và in phiếu/lưu PDF; lỗi có thể tải lại, phản hồi danh sách cũ không ghi đè kết quả mới.
-- Không có migration mới. Giữ toàn bộ tính năng khách và dữ liệu cũ.
+## File mới (9)
 
-## File mới (3)
+- database/migrations/2026_10_27_150000_create_support_conversations_tables.php
+- app/Models/SupportThread.php
+- app/Models/SupportMessage.php
+- app/Http/Controllers/Api/SupportController.php
+- resources/js/hooks/useSupportMutation.js
+- resources/js/components/SupportCenter.jsx
+- resources/js/components/SupportConversation.jsx
+- resources/js/components/SupportCenter.css
+- tests/Feature/SupportConversationTest.php
 
-- resources/js/components/AdminOrdersPage.jsx
-- resources/js/components/AdminOrderDetail.jsx
-- tests/Feature/AdminOrdersTest.php
+## File sửa (8)
 
-## File sửa so với nền in phiếu (9)
-
-- app/Http/Controllers/Api/AdminController.php
+- app/Services/StoreNotifier.php
+- resources/js/app.jsx
 - resources/js/components/AdminDashboard.jsx
-- resources/js/components/ConfirmCodPayment.jsx
-- resources/js/components/OrderManagement.jsx
-- resources/js/components/OrderPrintButton.jsx
+- resources/js/components/Navbar.jsx
 - resources/js/services/api.js
 - routes/api.php
 - HUONG_DAN_CHAY.md
 - UPDATE.md
 
-## File hỗ trợ in kèm lại, không đổi so với nền in phiếu (5)
+## Phụ thuộc kèm lại, không đổi so với bản lọc (5)
 
-- bootstrap/app.php
-- app/Http/Controllers/Api/OrderPrintController.php
-- resources/views/orders/print.blade.php
-- tests/Feature/OrderPrintTest.php
-- resources/js/components/MyOrdersModal.jsx
+- resources/js/hooks/useProductCatalog.js
+- resources/js/components/ProductFilters.jsx
+- resources/js/components/FilterBar.jsx
+- app/Http/Controllers/Api/ProductController.php
+- tests/Feature/ProductFiltersTest.php
 
-Tổng gói update 17 file, đường dẫn gốc repository. Không upload ZIP hoặc .env/thư viện/build/log.
+## Migration và chạy
 
-## Chạy sau cập nhật
+```powershell
+php artisan migrate --path=database/migrations/2026_10_27_150000_create_support_conversations_tables.php
+php artisan optimize:clear
+```
 
-Giữ nguyên .env, APP_KEY và MySQL. Chép file, chạy php artisan optimize:clear, khởi động lại Vite/PHP hoặc build rồi Ctrl+F5. Không cần migration mới; nền phải đã có các migration giao hàng/voucher trước đây.
+Giữ .env/APP_KEY/database. Khởi động lại PHP/Vite hoặc build rồi Ctrl+F5. Không nhập SQL hoặc migrate:fresh. Không cần key AI, SMTP, WebSocket hay worker để chat. Nền cần bảng store_notifications đã có từ bản thông báo.
 
 ## Validation
 
-183 backend tests / 1346 assertions và 9 nhóm React/jsdom mới đạt. Kiểm thử giao diện đi từ tab Đơn hàng thật của AdminDashboard, xác nhận có nút in và chi tiết hoạt động. Production build đạt; cảnh báo Tailwind/bundle cũ còn tồn tại. Chưa test MySQL/browser máy người dùng.
+206 backend tests / 1534 assertions, 9 nhóm React/jsdom mới và production build đạt. Có kiểm tra quyền, order ownership, idempotency, chưa đọc, phân trang/cursor, status conflict, rollback notification và tách rate limit đọc/gửi. Chưa kiểm tra MySQL/browser máy người dùng. Cảnh báo Tailwind/bundle cũ còn tồn tại.
 
 ## Commit GitHub
 
 ```text
-fix: nối đúng trang đơn hàng admin, thêm chi tiết và in phiếu
+feat: thêm nhắn tin hỗ trợ giữa khách hàng và admin
 ```
 
 Mô tả:
 
 ```text
-- Thay bảng đơn cũ trong dashboard bằng màn hình quản lý đầy đủ.
-- Thêm in phiếu tại danh sách và chi tiết, mở đơn từ Tổng quan.
-- Hiển thị khách hàng, sản phẩm, tiền giảm, thanh toán, vận chuyển và lịch sử.
-- Thêm tìm/lọc/phân trang, xác nhận đổi trạng thái và kiểm tra xung đột.
-- Giữ thu COD, thông báo và các chức năng trước đó; bổ sung kiểm thử.
+- Tạo yêu cầu hỗ trợ gắn đơn, nhắn tin hai chiều và theo dõi trạng thái.
+- Thêm hộp thư admin, chưa đọc và thông báo mở đúng hội thoại.
+- Tự tải tin mới, tải lịch sử, chống gửi trùng khi thử lại sau mất mạng.
+- Kiểm tra quyền riêng tư, bổ sung migration, kiểm thử và hướng dẫn.
 ```
-
-## Sửa menu admin khi cuộn
-
-Menu trái dùng sticky ở đỉnh cửa sổ, giới hạn chiều cao theo viewport. Danh mục cuộn riêng trên màn hình thấp, tiêu đề và nút Về Cửa Hàng được giữ trong khung. Chỉ sửa code AdminDashboard.jsx, không có migration. Khởi động lại Vite/build và Ctrl+F5 sau cập nhật. Build đạt; cần kiểm tra cuộn trên trình duyệt máy bạn.
-
